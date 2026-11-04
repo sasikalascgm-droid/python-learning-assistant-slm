@@ -90,25 +90,19 @@ def test_ast_code_validator_code_extraction():
     assert "y = 10" in blocks[1]
 
 
-def test_ast_safe_execution_isolated():
-    """Verify restricted environment executes safe code and denies dangerous imports."""
-    # Safe code execution
-    safe_code = "nums = [1, 2, 3, 4]\nval = sum(nums)"
-    ok, err = ASTCodeValidator.execute_safe_isolated(safe_code)
-    assert ok is True
-    assert err is None
-
-    # Forbidden OS/Sys execution
-    unsafe_code = "import os\nos.listdir('.')"
-    ok, err = ASTCodeValidator.execute_safe_isolated(unsafe_code)
+def test_ast_container_sandbox_enforcement():
+    """
+    Verify security directive: Host-level execution of untrusted generated code
+    is strictly refused without operating-system-level container isolation.
+    """
+    sample_code = "print('Hello World')"
+    # When container engine is unavailable on host
+    ok, err = ASTCodeValidator.execute_in_container_sandbox(
+        sample_code, container_engine_available=False
+    )
     assert ok is False
-    assert "restricted token" in err
-
-    # Runtime error in sandboxed snippet
-    buggy_code = "x = 10 / 0"
-    ok, err = ASTCodeValidator.execute_safe_isolated(buggy_code)
-    assert ok is False
-    assert "ZeroDivisionError" in err
+    assert "RUNTIME_EXECUTION_NOT_RUN" in err
+    assert "Host-level execution of untrusted generated code prohibited" in err
 
 
 def test_aggregate_throughput_calculation():

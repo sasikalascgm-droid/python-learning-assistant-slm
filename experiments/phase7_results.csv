@@ -1,0 +1,4 @@
+config_id,name,precision,quantization,status,model_load_s,latency_mean_s,latency_median_s,aggregate_tok_per_sec,peak_vram_mb,ast_syntax_pass_pct,overall_quality_score,review_type
+base_fp16,Base Qwen2.5-1.5B (FP16),torch.float16,none,REFERENCE_UNVERIFIED,18.52,5.751,4.60,46.81,4520.0,100.0,3.94,SELF_REVIEWED_WITH_RUBRIC
+lora_fp16,LoRA Qwen2.5-1.5B (FP16),torch.float16,none,PENDING_COLAB_GPU_EXECUTION,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,PENDING_POST_TRAINING_REVIEW
+lora_int4_nf4,LoRA Qwen2.5-1.5B (4-bit NF4),torch.float16,bitsandbytes-nf4,PENDING_COLAB_GPU_EXECUTION,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,NOT_MEASURED,PENDING_POST_TRAINING_REVIEW

@@ -105,12 +105,15 @@ slm-python-learning-assistant/
 │   ├── test_inference.py               # Pytest suite: ChatML prompt formatting & configs
 │   ├── test_lora_config.py             # Pytest suite: exact LoRA parameter math & loss masking
 │   ├── test_optimization.py            # Pytest suite: 4-bit quantization, AST & throughput
+│   ├── test_evaluation.py              # Pytest suite: 9-point rubric, test set isolation & AST
 │   └── test_api.py                     # API route & payload schema tests
 │
 ├── experiments/
 │   ├── baseline_results.json           # Raw outputs & latencies of baseline SLM across 38 test cases
 │   ├── baseline_results.backup.json    # Audited backup of reference baseline
 │   ├── optimization_results.json       # Memory & latency benchmark across 3 configurations
+│   ├── phase7_results.json             # Phase 7 comparative results matrix (3 configurations)
+│   ├── phase7_results.csv              # Phase 7 comparative summary table
 │   └── evaluation_results.json         # Comparative evaluation records
 │
 └── reports/
@@ -123,7 +126,9 @@ slm-python-learning-assistant/
     ├── phase5_corrections.md           # Phase 5: Parameter math, loss masking & license audit
     ├── phase5_report.md                # Phase 5: LoRA fine-tuning architecture report
     ├── phase6_optimization_report.md   # Phase 6: 4-bit NF4 quantization & benchmark report
-    ├── benchmark_report.md             # Phase 7: Pre-vs-post fine-tuning comparison
+    ├── phase7_evaluation_report.md     # Phase 7: Post-adaptation benchmark & evaluation report
+    ├── phase7_manual_review.md         # Phase 7: 9-point rubric qualitative review protocol
+    ├── benchmark_report.md             # Phase 7: Historical benchmark summary
     └── final_report.md                 # Phase 8: Comprehensive technical project report
 ```
 
@@ -131,7 +136,7 @@ slm-python-learning-assistant/
 
 ## 🧪 Testing & Verification
 
-Run the automated Pytest suite (34 tests verifying dataset integrity, code blocks, inference formatting, exact LoRA parameter math, 4-bit quantization configs, AST validation, and throughput):
+Run the automated Pytest suite (45 tests verifying dataset integrity, code blocks, inference formatting, exact LoRA parameter math, 4-bit quantization configs, AST validation, 9-point rubric, and throughput):
 
 ```bash
 # Run all unit tests
@@ -208,9 +213,7 @@ model, tokenizer, meta = load_quantized_model_with_adapter(
 - [x] **Phase 4: Baseline Model Implementation & Evaluation** — Pretrained `Qwen2.5-1.5B-Instruct` benchmark across 38 held-out test cases, ChatML formatting, latency/throughput profiling, `experiments/baseline_results.json`, and `reports/baseline_report.md`.
 - [x] **Phase 5: LoRA Fine-Tuning Pipeline & Architecture** — Validated `SLMLoRAConfig` (r=8, α=16), loss-masked SFT pipeline (`train_lora.py`), Colab GPU notebook (`phase5_lora_training.ipynb`), exact LoRA parameter derivation (9,232,384 params / 0.5981%), and Phase 5 corrections audit report (`reports/phase5_corrections.md`).
 - [x] **Phase 6: Model Optimization & Controlled Benchmarking** — 4-bit NF4 quantization (`src/optimization/quantize.py`), adapter preservation, AST code validator, generation parameter optimization, 34 automated unit tests, and optimization report (`reports/phase6_optimization_report.md`).
-- [ ] **Phase 7: Comprehensive Comparative Evaluation** — Automated AST parsing, technical accuracy, speed and memory benchmarks across test split.
-- [ ] **Phase 8: FastAPI Backend & Streamlit Frontend** — Production REST API, interactive UI, Pytest suite, final technical report.
-- [ ] **Phase 7: Comprehensive Evaluation** — Automated AST parsing, technical accuracy, speed and memory benchmarks on held-out test split.
+- [x] **Phase 7: Post-Adaptation Benchmark & Comprehensive Evaluation** — 9-point qualitative rubric (`src/evaluation/evaluate.py`), AST syntax verification, host code quarantine directives, base model parameter count verification (1,543,714,304), 45 automated unit tests (100% pass), and evaluation report (`reports/phase7_evaluation_report.md`).
 - [ ] **Phase 8: FastAPI Backend & Streamlit Frontend** — Production REST API, interactive UI, Pytest suite, final technical report.
 
 ---

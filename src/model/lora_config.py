@@ -21,13 +21,18 @@ QWEN2_TARGET_MODULES = [
 ]
 
 # Exact architectural dimensions for Qwen/Qwen2.5-1.5B-Instruct
+# Derived from Qwen2ForCausalLM with tie_word_embeddings=True and QKV biases:
+#   Embeddings: 151,936 * 1536 = 233,373,696
+#   28 Layers * (Attention 5,507,072 + MLP 41,287,680 + 2 RMSNorms 3,072) = 1,310,339,072
+#   Final RMSNorm = 1,536
+#   Total = 233,373,696 + 1,310,339,072 + 1,536 = 1,543,714,304
 QWEN2_1_5B_DIMS: Dict[str, int] = {
     "hidden_size": 1536,
     "intermediate_size": 8960,
     "num_hidden_layers": 28,
     "num_attention_heads": 12,
     "num_key_value_heads": 2,
-    "total_base_parameters": 1543714816,
+    "total_base_parameters": 1543714304,
 }
 
 PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"

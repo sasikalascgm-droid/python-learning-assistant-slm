@@ -141,8 +141,8 @@ def test_exact_lora_parameter_math():
 
     # 1. Total trainable parameter count
     assert res["calculated_trainable_parameters"] == 9232384
-    # 2. Total base parameter count
-    assert res["total_base_parameters"] == 1543714816
+    # 2. Total base parameter count (tied embeddings + QKV biases: 1,543,714,304)
+    assert res["total_base_parameters"] == 1543714304
     # 3. Trainable percentage
     assert res["trainable_percentage"] == pytest.approx(0.5981, abs=0.001)
     # 4. Parameters per layer

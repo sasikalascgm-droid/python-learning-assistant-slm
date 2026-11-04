@@ -28,7 +28,7 @@ model:
   tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
   architecture: "Qwen2ForCausalLM"
   license: "Apache-2.0"
-  parameters: 1543714816         # 1.54B total parameters
+  parameters: 1543714304         # 1.54B total parameters (tied word embeddings + QKV biases)
   context_length: 32768
   max_generation_length: 8192
   trust_remote_code: false
