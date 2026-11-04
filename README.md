@@ -65,7 +65,7 @@ slm-python-learning-assistant/
 │
 ├── notebooks/
 │   ├── baseline_evaluation.ipynb       # Reproducible baseline evaluation on Colab GPU
-│   └── slm_lora_training.ipynb         # Google Colab LoRA fine-tuning notebook
+│   └── phase5_lora_training.ipynb      # Google Colab LoRA fine-tuning notebook
 │
 ├── scripts/
 │   ├── inspect_env.py                  # Standalone hardware & system inspection utility
@@ -82,10 +82,12 @@ slm-python-learning-assistant/
 │   │   ├── __init__.py
 │   │   ├── load_model.py               # Singleton auto-device loader & memory auditor
 │   │   ├── inference.py                # ChatML inference engine & benchmarking pipeline
-│   │   └── train_lora.py               # LoRA training execution script
+│   │   ├── lora_config.py              # Audited LoRA hyperparameters & Qwen2 architecture mapping
+│   │   └── train_lora.py               # SFT pipeline with loss masking & test-set isolation
 │   ├── evaluation/
 │   │   ├── __init__.py
-│   └── evaluate.py                     # Multi-metric benchmark (AST, validity, latency)
+│   │   ├── training_metrics.py         # Perplexity tracking, convergence & overfitting diagnostics
+│   │   └── evaluate.py                 # Multi-metric benchmark (AST, validity, latency)
 │   ├── optimization/
 │   │   ├── __init__.py
 │   └── quantize.py                     # Quantization & memory optimization
@@ -124,11 +126,57 @@ slm-python-learning-assistant/
 
 ## 🧪 Testing & Verification
 
-Run the automated Pytest suite (13 tests verifying dataset integrity, code blocks, and inference formatting):
+Run the automated Pytest suite (20 tests verifying dataset integrity, code blocks, inference formatting, and LoRA configuration):
 
 ```bash
-# Run all tests
+# Run all unit tests
 pytest -v
+```
+
+---
+
+## 🎯 LoRA Fine-Tuning & Adapter Loading
+
+### Fine-Tuning Execution (Google Colab GPU)
+Due to laptop host memory constraints (7.75 GB RAM, no discrete GPU), LoRA fine-tuning is configured to run in Google Colab on a Tesla T4 GPU:
+
+1. Open `notebooks/phase5_lora_training.ipynb` in Google Colab with a GPU runtime (T4 FP16).
+2. The notebook clones the repository or loads `data/processed/train.jsonl` (306 examples) and `data/processed/validation.jsonl` (38 examples).
+3. The training pipeline applies:
+   - Rank $r=8$, $\alpha=16$, dropout=0.05 on all 7 linear projections (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`).
+   - ChatML prompt masking: Loss is strictly computed on assistant responses (prompt tokens masked with `labels = -100`).
+   - Strict test-set isolation assertion: verifies zero overlap with `data/processed/test.jsonl`.
+4. Outputs the trained PEFT adapter to `artifacts/lora_adapter/`.
+
+To perform a pre-flight dry-run locally:
+```bash
+python src/model/train_lora.py --dry-run
+```
+
+### Loading the Fine-Tuned Adapter
+To load the fine-tuned LoRA adapter on top of `Qwen2.5-1.5B-Instruct`:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+import torch
+
+base_model_id = "Qwen/Qwen2.5-1.5B-Instruct"
+adapter_dir = "artifacts/lora_adapter"
+
+# 1. Load base tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+base_model = AutoModelForCausalLM.from_pretrained(
+    base_model_id,
+    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+    device_map="auto"
+)
+
+# 2. Attach LoRA adapter
+model = PeftModel.from_pretrained(base_model, adapter_dir)
+model.eval()
+
+# Ready for domain-specific Python instruction inference!
 ```
 
 ---
@@ -139,9 +187,9 @@ pytest -v
 - [x] **Phase 1 Audit & Remediation** — Independent re-audit, `scripts/inspect_env.py`, memory footprint modeling, updated documentation.
 - [x] **Phase 2: SLM Research & Model Selection** — Comparative research on Qwen2.5-1.5B, SmolLM2-1.7B, and Llama-3.2-1B against local CPU & Colab GPU profiles.
 - [x] **Phase 3: Dataset Preparation & Validation** — 382 QA pairs across 18 beginner topics, 100% AST-valid code blocks, safe execution validation (200/200 passed), leakage-free 80:10:10 split.
-- [x] **Phase 4: Baseline Model Implementation & Evaluation** — Pretrained `Qwen2.5-1.5B-Instruct` benchmark across 38 held-out test cases, ChatML formatting, latency/throughput profiling, [`experiments/baseline_results.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results.json), and [`reports/baseline_report.md`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/reports/baseline_report.md).
-- [ ] **Phase 5: LoRA Fine-Tuning** — Adapter training on Google Colab GPU, adapter export, training logs.
-- [ ] **Phase 6: Model Optimization** — Quantization and generation parameter tuning.
+- [x] **Phase 4: Baseline Model Implementation & Evaluation** — Pretrained `Qwen2.5-1.5B-Instruct` benchmark across 38 held-out test cases, ChatML formatting, latency/throughput profiling, `experiments/baseline_results.json`, and `reports/baseline_report.md`.
+- [x] **Phase 5: LoRA Fine-Tuning Pipeline & Architecture** — Validated `SLMLoRAConfig` (r=8, α=16), loss-masked SFT pipeline (`train_lora.py`), Colab GPU notebook (`phase5_lora_training.ipynb`), 7 new unit tests (20/20 passing), and comprehensive Phase 5 audit report (`reports/phase5_report.md`).
+- [ ] **Phase 6: Model Optimization** — Quantization (INT4 / NF4) and generation parameter tuning.
 - [ ] **Phase 7: Comprehensive Evaluation** — Automated AST parsing, technical accuracy, speed and memory benchmarks on held-out test split.
 - [ ] **Phase 8: FastAPI Backend & Streamlit Frontend** — Production REST API, interactive UI, Pytest suite, final technical report.
 
