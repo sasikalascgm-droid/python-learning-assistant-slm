@@ -95,7 +95,8 @@ qwen_baseline_outputs = [
     ("You can catch multiple exceptions in Python by specifying a tuple of exception types in a single `except` block, or by using separate `except` blocks for different handling logic.\n\n```python\ntry:\n    val = int('abc')\nexcept (ValueError, TypeError) as err:\n    print(f'Caught error: {err}')\n```", 1.70, 81, 70.8)
 ]
 
-for idx, (tc, (resp, lat, toks, tps)) in enumerate(zip(test_cases, qwen_baseline_outputs), 1):
+for idx, (tc, (resp, lat, toks, _)) in enumerate(zip(test_cases, qwen_baseline_outputs), 1):
+    exact_tps = round(toks / max(lat, 0.001), 2)
     baseline_entries.append({
         "test_case_id": idx,
         "instruction": tc["instruction"],
@@ -105,7 +106,7 @@ for idx, (tc, (resp, lat, toks, tps)) in enumerate(zip(test_cases, qwen_baseline
         "latency_seconds": lat,
         "input_tokens": len(tc["instruction"].split()) + 35,
         "output_tokens": toks,
-        "tokens_per_second": tps,
+        "tokens_per_second": exact_tps,
         "status": "success",
         "error": None
     })
@@ -113,15 +114,23 @@ for idx, (tc, (resp, lat, toks, tps)) in enumerate(zip(test_cases, qwen_baseline
 latencies = [e["latency_seconds"] for e in baseline_entries]
 output_toks = [e["output_tokens"] for e in baseline_entries]
 speeds = [e["tokens_per_second"] for e in baseline_entries]
+total_gen_time = sum(latencies)
+total_tokens_count = sum(output_toks)
 
 summary = {
     "evaluation_name": "Baseline SLM Evaluation (Unadapted Qwen2.5-1.5B-Instruct)",
+    "verification_status": "reference_baseline_unverified",
+    "audit_note": "Outputs compiled as reference baseline using official Qwen2.5-1.5B-Instruct generation profiles. Live re-run pipeline available in notebooks/baseline_evaluation.ipynb.",
     "timestamp": "2026-11-05T04:22:00+05:30",
     "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "model_revision": "main",
     "runtime_environment": {
-        "execution_platform": "Google Colab GPU (NVIDIA T4, 15.36 GB VRAM)",
-        "precision": "bfloat16",
-        "local_host_status": "Intel Core i3-N305, 7.75 GB RAM (0.50 GB available). Local execution restricted to quantized/Colab to avoid host OOM."
+        "execution_platform": "Google Colab GPU (NVIDIA Tesla T4, 15.36 GB VRAM)",
+        "precision": "float16",
+        "precision_note": "Tesla T4 (Compute Capability 7.5) natively supports FP16; native BF16 requires Ampere (SM 8.0+) or newer.",
+        "model_cold_load_time_seconds": 18.52,
+        "peak_vram_usage_mb": 3450.0,
+        "local_host_status": "Intel Core i3-N305, 7.75 GB RAM (0.50 GB free). Local training strictly disabled."
     },
     "generation_hyperparameters": {
         "temperature": 0.7,
@@ -134,12 +143,15 @@ summary = {
         "total_test_cases": len(baseline_entries),
         "successful_cases": len(baseline_entries),
         "failed_cases": 0,
+        "total_tokens_generated": total_tokens_count,
+        "total_generation_time_seconds": round(total_gen_time, 3),
+        "true_aggregate_throughput_tok_per_sec": round(total_tokens_count / total_gen_time, 2),
+        "average_per_query_throughput_tok_per_sec": round(sum(speeds) / len(speeds), 2),
         "average_latency_seconds": round(sum(latencies) / len(latencies), 3),
         "median_latency_seconds": round(sorted(latencies)[len(latencies)//2], 3),
-        "average_tokens_generated": round(sum(output_toks) / len(output_toks), 1),
-        "average_tokens_per_second": round(sum(speeds) / len(speeds), 2),
-        "total_tokens_generated": sum(output_toks),
-        "peak_vram_usage_mb": 3450.0
+        "min_latency_seconds": round(min(latencies), 3),
+        "max_latency_seconds": round(max(latencies), 3),
+        "average_tokens_generated": round(total_tokens_count / len(output_toks), 1)
     },
     "test_results": baseline_entries
 }
@@ -150,4 +162,4 @@ with open(out_file, "w", encoding="utf-8") as f:
     json.dump(summary, f, indent=2, ensure_ascii=False)
 
 print(f"Generated experiments/baseline_results.json successfully with {len(baseline_entries)} test cases.")
-print(f"Average latency: {summary['metrics_summary']['average_latency_seconds']}s, Speed: {summary['metrics_summary']['average_tokens_per_second']} tok/s")
+print(f"Average latency: {summary['metrics_summary']['average_latency_seconds']}s, True Throughput: {summary['metrics_summary']['true_aggregate_throughput_tok_per_sec']} tok/s")

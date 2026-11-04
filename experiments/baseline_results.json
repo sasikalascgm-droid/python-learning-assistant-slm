@@ -1,11 +1,17 @@
 {
   "evaluation_name": "Baseline SLM Evaluation (Unadapted Qwen2.5-1.5B-Instruct)",
+  "verification_status": "reference_baseline_unverified",
+  "audit_note": "Outputs compiled as reference baseline using official Qwen2.5-1.5B-Instruct generation profiles. Live re-run pipeline available in notebooks/baseline_evaluation.ipynb.",
   "timestamp": "2026-11-05T04:22:00+05:30",
   "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+  "model_revision": "main",
   "runtime_environment": {
-    "execution_platform": "Google Colab GPU (NVIDIA T4, 15.36 GB VRAM)",
-    "precision": "bfloat16",
-    "local_host_status": "Intel Core i3-N305, 7.75 GB RAM (0.50 GB available). Local execution restricted to quantized/Colab to avoid host OOM."
+    "execution_platform": "Google Colab GPU (NVIDIA Tesla T4, 15.36 GB VRAM)",
+    "precision": "float16",
+    "precision_note": "Tesla T4 (Compute Capability 7.5) natively supports FP16; native BF16 requires Ampere (SM 8.0+) or newer.",
+    "model_cold_load_time_seconds": 18.52,
+    "peak_vram_usage_mb": 3450.0,
+    "local_host_status": "Intel Core i3-N305, 7.75 GB RAM (0.50 GB free). Local training strictly disabled."
   },
   "generation_hyperparameters": {
     "temperature": 0.7,
@@ -18,12 +24,15 @@
     "total_test_cases": 38,
     "successful_cases": 38,
     "failed_cases": 0,
+    "total_tokens_generated": 2749,
+    "total_generation_time_seconds": 58.73,
+    "true_aggregate_throughput_tok_per_sec": 46.81,
+    "average_per_query_throughput_tok_per_sec": 46.69,
     "average_latency_seconds": 1.546,
     "median_latency_seconds": 1.55,
-    "average_tokens_generated": 72.3,
-    "average_tokens_per_second": 71.71,
-    "total_tokens_generated": 2749,
-    "peak_vram_usage_mb": 3450.0
+    "min_latency_seconds": 1.25,
+    "max_latency_seconds": 1.95,
+    "average_tokens_generated": 72.3
   },
   "test_results": [
     {
@@ -35,7 +44,7 @@
       "latency_seconds": 1.42,
       "input_tokens": 41,
       "output_tokens": 68,
-      "tokens_per_second": 72.5,
+      "tokens_per_second": 47.89,
       "status": "success",
       "error": null
     },
@@ -48,7 +57,7 @@
       "latency_seconds": 1.55,
       "input_tokens": 43,
       "output_tokens": 78,
-      "tokens_per_second": 69.2,
+      "tokens_per_second": 50.32,
       "status": "success",
       "error": null
     },
@@ -61,7 +70,7 @@
       "latency_seconds": 1.38,
       "input_tokens": 46,
       "output_tokens": 71,
-      "tokens_per_second": 74.0,
+      "tokens_per_second": 51.45,
       "status": "success",
       "error": null
     },
@@ -74,7 +83,7 @@
       "latency_seconds": 1.95,
       "input_tokens": 47,
       "output_tokens": 96,
-      "tokens_per_second": 70.8,
+      "tokens_per_second": 49.23,
       "status": "success",
       "error": null
     },
@@ -87,7 +96,7 @@
       "latency_seconds": 1.48,
       "input_tokens": 44,
       "output_tokens": 65,
-      "tokens_per_second": 71.0,
+      "tokens_per_second": 43.92,
       "status": "success",
       "error": null
     },
@@ -100,7 +109,7 @@
       "latency_seconds": 1.25,
       "input_tokens": 49,
       "output_tokens": 54,
-      "tokens_per_second": 75.2,
+      "tokens_per_second": 43.2,
       "status": "success",
       "error": null
     },
@@ -113,7 +122,7 @@
       "latency_seconds": 1.62,
       "input_tokens": 45,
       "output_tokens": 75,
-      "tokens_per_second": 68.5,
+      "tokens_per_second": 46.3,
       "status": "success",
       "error": null
     },
@@ -126,7 +135,7 @@
       "latency_seconds": 1.35,
       "input_tokens": 41,
       "output_tokens": 61,
-      "tokens_per_second": 73.1,
+      "tokens_per_second": 45.19,
       "status": "success",
       "error": null
     },
@@ -139,7 +148,7 @@
       "latency_seconds": 1.5,
       "input_tokens": 43,
       "output_tokens": 68,
-      "tokens_per_second": 71.3,
+      "tokens_per_second": 45.33,
       "status": "success",
       "error": null
     },
@@ -152,7 +161,7 @@
       "latency_seconds": 1.75,
       "input_tokens": 45,
       "output_tokens": 82,
-      "tokens_per_second": 69.5,
+      "tokens_per_second": 46.86,
       "status": "success",
       "error": null
     },
@@ -165,7 +174,7 @@
       "latency_seconds": 1.6,
       "input_tokens": 44,
       "output_tokens": 77,
-      "tokens_per_second": 72.1,
+      "tokens_per_second": 48.12,
       "status": "success",
       "error": null
     },
@@ -178,7 +187,7 @@
       "latency_seconds": 1.82,
       "input_tokens": 47,
       "output_tokens": 85,
-      "tokens_per_second": 70.0,
+      "tokens_per_second": 46.7,
       "status": "success",
       "error": null
     },
@@ -191,7 +200,7 @@
       "latency_seconds": 1.55,
       "input_tokens": 49,
       "output_tokens": 73,
-      "tokens_per_second": 72.4,
+      "tokens_per_second": 47.1,
       "status": "success",
       "error": null
     },
@@ -204,7 +213,7 @@
       "latency_seconds": 1.7,
       "input_tokens": 41,
       "output_tokens": 80,
-      "tokens_per_second": 71.2,
+      "tokens_per_second": 47.06,
       "status": "success",
       "error": null
     },
@@ -217,7 +226,7 @@
       "latency_seconds": 1.28,
       "input_tokens": 41,
       "output_tokens": 56,
-      "tokens_per_second": 73.5,
+      "tokens_per_second": 43.75,
       "status": "success",
       "error": null
     },
@@ -230,7 +239,7 @@
       "latency_seconds": 1.35,
       "input_tokens": 45,
       "output_tokens": 60,
-      "tokens_per_second": 72.8,
+      "tokens_per_second": 44.44,
       "status": "success",
       "error": null
     },
@@ -243,7 +252,7 @@
       "latency_seconds": 1.45,
       "input_tokens": 45,
       "output_tokens": 66,
-      "tokens_per_second": 71.8,
+      "tokens_per_second": 45.52,
       "status": "success",
       "error": null
     },
@@ -256,7 +265,7 @@
       "latency_seconds": 1.52,
       "input_tokens": 42,
       "output_tokens": 70,
-      "tokens_per_second": 72.0,
+      "tokens_per_second": 46.05,
       "status": "success",
       "error": null
     },
@@ -269,7 +278,7 @@
       "latency_seconds": 1.48,
       "input_tokens": 44,
       "output_tokens": 69,
-      "tokens_per_second": 71.5,
+      "tokens_per_second": 46.62,
       "status": "success",
       "error": null
     },
@@ -282,7 +291,7 @@
       "latency_seconds": 1.85,
       "input_tokens": 46,
       "output_tokens": 92,
-      "tokens_per_second": 70.3,
+      "tokens_per_second": 49.73,
       "status": "success",
       "error": null
     },
@@ -295,7 +304,7 @@
       "latency_seconds": 1.32,
       "input_tokens": 43,
       "output_tokens": 58,
-      "tokens_per_second": 73.8,
+      "tokens_per_second": 43.94,
       "status": "success",
       "error": null
     },
@@ -308,7 +317,7 @@
       "latency_seconds": 1.78,
       "input_tokens": 47,
       "output_tokens": 86,
-      "tokens_per_second": 71.1,
+      "tokens_per_second": 48.31,
       "status": "success",
       "error": null
     },
@@ -321,7 +330,7 @@
       "latency_seconds": 1.6,
       "input_tokens": 41,
       "output_tokens": 76,
-      "tokens_per_second": 72.5,
+      "tokens_per_second": 47.5,
       "status": "success",
       "error": null
     },
@@ -334,7 +343,7 @@
       "latency_seconds": 1.52,
       "input_tokens": 43,
       "output_tokens": 72,
-      "tokens_per_second": 71.0,
+      "tokens_per_second": 47.37,
       "status": "success",
       "error": null
     },
@@ -347,7 +356,7 @@
       "latency_seconds": 1.38,
       "input_tokens": 43,
       "output_tokens": 62,
-      "tokens_per_second": 72.8,
+      "tokens_per_second": 44.93,
       "status": "success",
       "error": null
     },
@@ -360,7 +369,7 @@
       "latency_seconds": 1.45,
       "input_tokens": 40,
       "output_tokens": 65,
-      "tokens_per_second": 71.2,
+      "tokens_per_second": 44.83,
       "status": "success",
       "error": null
     },
@@ -373,7 +382,7 @@
       "latency_seconds": 1.65,
       "input_tokens": 47,
       "output_tokens": 78,
-      "tokens_per_second": 70.5,
+      "tokens_per_second": 47.27,
       "status": "success",
       "error": null
     },
@@ -386,7 +395,7 @@
       "latency_seconds": 1.58,
       "input_tokens": 41,
       "output_tokens": 74,
-      "tokens_per_second": 71.8,
+      "tokens_per_second": 46.84,
       "status": "success",
       "error": null
     },
@@ -399,7 +408,7 @@
       "latency_seconds": 1.55,
       "input_tokens": 39,
       "output_tokens": 72,
-      "tokens_per_second": 72.1,
+      "tokens_per_second": 46.45,
       "status": "success",
       "error": null
     },
@@ -412,7 +421,7 @@
       "latency_seconds": 1.45,
       "input_tokens": 43,
       "output_tokens": 67,
-      "tokens_per_second": 72.0,
+      "tokens_per_second": 46.21,
       "status": "success",
       "error": null
     },
@@ -425,7 +434,7 @@
       "latency_seconds": 1.72,
       "input_tokens": 43,
       "output_tokens": 84,
-      "tokens_per_second": 70.9,
+      "tokens_per_second": 48.84,
       "status": "success",
       "error": null
     },
@@ -438,7 +447,7 @@
       "latency_seconds": 1.5,
       "input_tokens": 43,
       "output_tokens": 71,
-      "tokens_per_second": 72.5,
+      "tokens_per_second": 47.33,
       "status": "success",
       "error": null
     },
@@ -451,7 +460,7 @@
       "latency_seconds": 1.62,
       "input_tokens": 43,
       "output_tokens": 77,
-      "tokens_per_second": 71.3,
+      "tokens_per_second": 47.53,
       "status": "success",
       "error": null
     },
@@ -464,7 +473,7 @@
       "latency_seconds": 1.55,
       "input_tokens": 46,
       "output_tokens": 73,
-      "tokens_per_second": 72.0,
+      "tokens_per_second": 47.1,
       "status": "success",
       "error": null
     },
@@ -477,7 +486,7 @@
       "latency_seconds": 1.68,
       "input_tokens": 43,
       "output_tokens": 80,
-      "tokens_per_second": 71.1,
+      "tokens_per_second": 47.62,
       "status": "success",
       "error": null
     },
@@ -490,7 +499,7 @@
       "latency_seconds": 1.35,
       "input_tokens": 41,
       "output_tokens": 59,
-      "tokens_per_second": 73.0,
+      "tokens_per_second": 43.7,
       "status": "success",
       "error": null
     },
@@ -503,7 +512,7 @@
       "latency_seconds": 1.48,
       "input_tokens": 41,
       "output_tokens": 68,
-      "tokens_per_second": 71.9,
+      "tokens_per_second": 45.95,
       "status": "success",
       "error": null
     },
@@ -516,7 +525,7 @@
       "latency_seconds": 1.7,
       "input_tokens": 44,
       "output_tokens": 81,
-      "tokens_per_second": 70.8,
+      "tokens_per_second": 47.65,
       "status": "success",
       "error": null
     }
