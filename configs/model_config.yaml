@@ -4,9 +4,15 @@ project:
   description: "AI-powered Python Learning Assistant using Small Language Models (SLM)"
 
 hardware:
-  target_device: "auto"  # auto-fallback to cpu on non-CUDA machines
-  cpu_threads: 4
-  precision: "float32"   # float32 for CPU stability, bfloat16/float16 for CUDA
+  target_device: "cpu"  # Host is verified Intel Core i3-N305 with Intel UHD Graphics (No CUDA)
+  cpu_threads: 4        # Optimized thread pool for 8-core Alder Lake-N CPU
+  precision: "float32"  # Note: FP32 requires ~6.1GB for 1.5B weights; recommended local execution uses INT4/GGUF
+  quantization_preferred: "int4"
+  colab_gpu: "T4"       # Designated GPU environment for LoRA fine-tuning and batch benchmarks
+  host_ram_gb: 7.75
+  host_free_ram_gb: 0.88
+  drive_c_free_gb: 7.62
+  drive_d_free_gb: 49.91
 
 candidates:
   qwen2_5_1_5b:
@@ -15,22 +21,29 @@ candidates:
     context_length: 32768
     license: "Apache-2.0"
     default_revision: "main"
+    tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
   smollm2_1_7b:
     model_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
     params: "1.71B"
     context_length: 8192
     license: "Apache-2.0"
     default_revision: "main"
+    tokenizer_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
   llama_3_2_1b:
     model_id: "meta-llama/Llama-3.2-1B-Instruct"
     params: "1.23B"
     context_length: 131072
     license: "Llama 3.2 Community License"
     default_revision: "main"
+    tokenizer_id: "meta-llama/Llama-3.2-1B-Instruct"
 
 selected_model:
   model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+  revision: "main"
+  tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
+  device: "cpu"
   torch_dtype: "auto"
+  low_cpu_mem_usage: true
 
 inference:
   max_new_tokens: 512
