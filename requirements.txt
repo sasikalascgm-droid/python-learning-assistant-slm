@@ -1,25 +1,29 @@
-# Core PyTorch and Hugging Face ecosystem
-torch>=2.0.0
-transformers>=4.40.0
-datasets>=2.18.0
-accelerate>=0.28.0
-peft>=0.10.0
-safetensors>=0.4.0
+# ==============================================================================
+# Python Learning Assistant - Dependency Manifest (Python 3.10)
+# ==============================================================================
 
-# API and Web Frameworks
-fastapi>=0.110.0
-uvicorn[standard]>=0.29.0
-pydantic>=2.6.0
-streamlit>=1.33.0
-
-# Utilities and System Monitoring
+# --- Phase 3: Data Processing & Testing (Local Host Environment) ---
 pyyaml>=6.0.1
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
 python-dotenv>=1.0.1
 psutil>=5.9.8
 requests>=2.31.0
 tqdm>=4.66.0
 
-# Testing and Code Quality
-pytest>=8.0.0
-pytest-asyncio>=0.23.0
+# --- Phase 8: API & Web Application (Local Host Environment) ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.6.0
+streamlit>=1.33.0
 httpx>=0.27.0
+
+# --- Phase 4-6: Model Inference & Fine-Tuning (Google Colab GPU / Dedicated Runtime) ---
+# Note: For local CPU inference, lightweight runtimes (e.g., GGUF/llama-cpp) or
+# CPU-only PyTorch can be installed. Heavy training is executed in Colab.
+# torch>=2.0.0
+# transformers>=4.40.0
+# datasets>=2.18.0
+# accelerate>=0.28.0
+# peft>=0.10.0
+# safetensors>=0.4.0

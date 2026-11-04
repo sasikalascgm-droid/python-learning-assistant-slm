@@ -3,18 +3,23 @@ project:
   version: "1.0.0"
   description: "AI-powered Python Learning Assistant using Small Language Models (SLM)"
   selected_slm: "Qwen/Qwen2.5-1.5B-Instruct"
+  selection_status: "provisional" # To be confirmed via Phase 4 baseline empirical testing
 
 hardware:
   target_device: "cpu"           # Local execution environment (Intel Core i3-N305, 8 cores, Intel UHD Graphics)
   cpu_threads: 4                 # Thread pool allocation for local CPU matrix operations
-  local_precision: "float32"     # Standard CPU floating point format
-  quantization_preferred: "int4" # Recommended for <2GB RAM usage on host (7.75 GB total host RAM)
+  local_precision: "float32"     # Theoretical CPU floating point format
+  quantization_preferred: "int4" # Recommended for <1.5GB RAM usage on host
   cloud_training_gpu: "T4"       # Google Colab free tier GPU (15.36 GB VRAM) for LoRA fine-tuning
   host_profile:
+    audit_timestamp: "2026-11-05T03:52:44+05:30"
     ram_total_gb: 7.75
-    ram_available_gb: 0.88
-    drive_c_free_gb: 7.62
+    ram_available_gb: 0.86
+    drive_c_free_gb: 7.51
     drive_d_free_gb: 49.91
+  cache_management:
+    hf_home: "D:/huggingface_cache" # Route all model weight caches to Drive D: to protect Drive C:
+    local_training_enabled: false   # Strictly disabled on host to prevent OOM crashes
 
 model:
   name: "Qwen2.5-1.5B-Instruct"
@@ -59,9 +64,9 @@ dataset:
   seed: 42
   raw_path: "data/raw"
   processed_path: "data/processed"
-  train_file: "data/train.jsonl"
-  validation_file: "data/validation.jsonl"
-  test_file: "data/test.jsonl"
+  train_file: "data/processed/train.jsonl"
+  validation_file: "data/processed/validation.jsonl"
+  test_file: "data/processed/test.jsonl"
 
 training:
   method: "lora"
