@@ -1,9 +1,9 @@
 {
   "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
-  "model_revision": "main",
+  "model_revision": "c644d673f4439c36291a1827471fb3be52382e26",
   "lora_parameters": {
     "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
-    "model_revision": "main",
+    "model_revision": "c644d673f4439c36291a1827471fb3be52382e26",
     "r": 8,
     "lora_alpha": 16,
     "lora_dropout": 0.05,
@@ -31,6 +31,77 @@
     "bf16": false,
     "gradient_checkpointing": true,
     "output_dir": "artifacts/lora_adapter"
+  },
+  "trainable_parameters_analysis": {
+    "rank": 8,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ],
+    "num_layers": 28,
+    "params_per_layer": 329728,
+    "calculated_trainable_parameters": 9232384,
+    "total_base_parameters": 1543714816,
+    "trainable_percentage": 0.5981,
+    "per_module_breakdown": {
+      "q_proj": {
+        "in_features": 1536,
+        "out_features": 1536,
+        "lora_a_params": 12288,
+        "lora_b_params": 12288,
+        "params_per_layer": 24576
+      },
+      "k_proj": {
+        "in_features": 1536,
+        "out_features": 256,
+        "lora_a_params": 12288,
+        "lora_b_params": 2048,
+        "params_per_layer": 14336
+      },
+      "v_proj": {
+        "in_features": 1536,
+        "out_features": 256,
+        "lora_a_params": 12288,
+        "lora_b_params": 2048,
+        "params_per_layer": 14336
+      },
+      "o_proj": {
+        "in_features": 1536,
+        "out_features": 1536,
+        "lora_a_params": 12288,
+        "lora_b_params": 12288,
+        "params_per_layer": 24576
+      },
+      "gate_proj": {
+        "in_features": 1536,
+        "out_features": 8960,
+        "lora_a_params": 12288,
+        "lora_b_params": 71680,
+        "params_per_layer": 83968
+      },
+      "up_proj": {
+        "in_features": 1536,
+        "out_features": 8960,
+        "lora_a_params": 12288,
+        "lora_b_params": 71680,
+        "params_per_layer": 83968
+      },
+      "down_proj": {
+        "in_features": 8960,
+        "out_features": 1536,
+        "lora_a_params": 71680,
+        "lora_b_params": 12288,
+        "params_per_layer": 83968
+      }
+    },
+    "actual_trainable_parameters": null,
+    "actual_total_parameters": null,
+    "match": true
   },
   "dataset_provenance": {
     "train_sha256": "a7b962e0e3fdf82f295646962e32a4e48c7f073e81d231655c880ef8a9f7a4c0",

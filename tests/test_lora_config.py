@@ -2,7 +2,14 @@
 
 import pytest
 from pathlib import Path
-from src.model.lora_config import SLMLoRAConfig, get_default_lora_config, QWEN2_TARGET_MODULES
+from src.model.lora_config import (
+    SLMLoRAConfig,
+    get_default_lora_config,
+    QWEN2_TARGET_MODULES,
+    QWEN2_1_5B_DIMS,
+    calculate_lora_parameters,
+    compute_qwen2_projection_shapes
+)
 from src.model.train_lora import (
     load_training_datasets,
     format_chatml_example,
@@ -126,3 +133,102 @@ def test_metrics_tracker_export(tmp_path):
     assert summary["hardware"]["gpu_name"] == "Tesla T4"
     assert len(summary["epochs"]) == 1
     assert summary["epochs"][0]["train_perplexity"] > 0.0
+
+
+def test_exact_lora_parameter_math():
+    """Verify LoRA parameter calculations match exact projection tensor math for Qwen2.5-1.5B."""
+    res = calculate_lora_parameters(r=8, target_modules=QWEN2_TARGET_MODULES)
+
+    # 1. Total trainable parameter count
+    assert res["calculated_trainable_parameters"] == 9232384
+    # 2. Total base parameter count
+    assert res["total_base_parameters"] == 1543714816
+    # 3. Trainable percentage
+    assert res["trainable_percentage"] == pytest.approx(0.5981, abs=0.001)
+    # 4. Parameters per layer
+    assert res["params_per_layer"] == 329728
+    # 5. Layers
+    assert res["num_layers"] == 28
+
+
+def test_per_module_parameter_breakdown():
+    """Verify each target projection module's LoRA A & B dimensions."""
+    res = calculate_lora_parameters(r=8, target_modules=QWEN2_TARGET_MODULES)
+    bd = res["per_module_breakdown"]
+
+    # Attention projections
+    assert bd["q_proj"]["params_per_layer"] == 24576  # 8*(1536 + 1536)
+    assert bd["k_proj"]["params_per_layer"] == 14336  # 8*(1536 + 256)
+    assert bd["v_proj"]["params_per_layer"] == 14336  # 8*(1536 + 256)
+    assert bd["o_proj"]["params_per_layer"] == 24576  # 8*(1536 + 1536)
+
+    # MLP projections
+    assert bd["gate_proj"]["params_per_layer"] == 83968  # 8*(1536 + 8960)
+    assert bd["up_proj"]["params_per_layer"] == 83968    # 8*(1536 + 8960)
+    assert bd["down_proj"]["params_per_layer"] == 83968  # 8*(8960 + 1536)
+
+
+def test_padding_loss_masking_exclusion():
+    """Verify padding tokens have attention_mask=0 and labels=-100."""
+    instruction = "Hello"
+    output = "World"
+    prompt_str, response_str = format_chatml_example(instruction, output)
+    tokenizer = DummyTokenizer()
+
+    # Prompt+response is ~65 tokens with default system prompt; max_length=128 triggers padding
+    features = tokenize_with_prompt_masking(
+        prompt_str, response_str, tokenizer, max_length=128, pad_to_max=True
+    )
+
+    labels = features["labels"]
+    attn = features["attention_mask"]
+    input_ids = features["input_ids"]
+
+    assert len(input_ids) == 128
+    assert len(labels) == 128
+    assert len(attn) == 128
+
+    # Padded tail elements must have attention_mask=0 and labels=-100
+    assert attn[-1] == 0
+    assert labels[-1] == -100
+    # Response tokens in the middle must be active
+    assert any(m == 1 for m in attn)
+    assert any(l != -100 for l in labels)
+
+
+def test_test_set_leak_assertion_triggers(tmp_path):
+    """Verify load_training_datasets raises AssertionError if any test item is in train."""
+    train_file = tmp_path / "train.jsonl"
+    val_file = tmp_path / "val.jsonl"
+    test_file = tmp_path / "test.jsonl"
+
+    leak_item = {"instruction": "Leaked question", "input": "", "output": "Ans"}
+    safe_item = {"instruction": "Safe question", "input": "", "output": "Ans"}
+
+    import json
+    with open(train_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(leak_item) + "\n")
+    with open(val_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(safe_item) + "\n")
+    with open(test_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(leak_item) + "\n")
+
+    with pytest.raises(AssertionError, match="FATAL: Test set contamination detected"):
+        load_training_datasets(
+            train_path=str(train_file),
+            val_path=str(val_file),
+            test_path_for_leak_check=str(test_file)
+        )
+
+
+def test_truncation_detection():
+    """Verify truncation is cleanly detected when sequence exceeds max_length."""
+    prompt_str = "A " * 50
+    response_str = "B " * 50
+    tokenizer = DummyTokenizer()
+
+    features = tokenize_with_prompt_masking(
+        prompt_str, response_str, tokenizer, max_length=20
+    )
+    assert features["truncated"] is True
+    assert len(features["input_ids"]) == 20

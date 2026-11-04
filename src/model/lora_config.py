@@ -5,7 +5,7 @@ to the Qwen2.5 dense decoder-only Transformer architecture (Qwen2ForCausalLM).
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import os
 
 
@@ -20,13 +20,123 @@ QWEN2_TARGET_MODULES = [
     "down_proj"    # Down projection (SwiGLU MLP)
 ]
 
+# Exact architectural dimensions for Qwen/Qwen2.5-1.5B-Instruct
+QWEN2_1_5B_DIMS: Dict[str, int] = {
+    "hidden_size": 1536,
+    "intermediate_size": 8960,
+    "num_hidden_layers": 28,
+    "num_attention_heads": 12,
+    "num_key_value_heads": 2,
+    "total_base_parameters": 1543714816,
+}
+
+PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"
+
+
+def compute_qwen2_projection_shapes(dims: Optional[Dict[str, int]] = None) -> Dict[str, Tuple[int, int]]:
+    """
+    Computes exact (in_features, out_features) dimensions for all 7 linear projections
+    in a single Qwen2 transformer block.
+    """
+    if dims is None:
+        dims = QWEN2_1_5B_DIMS
+    
+    hidden_size = dims["hidden_size"]
+    intermediate_size = dims["intermediate_size"]
+    num_heads = dims["num_attention_heads"]
+    num_kv_heads = dims["num_key_value_heads"]
+    head_dim = hidden_size // num_heads  # 128
+
+    return {
+        "q_proj": (hidden_size, num_heads * head_dim),       # 1536 -> 1536
+        "k_proj": (hidden_size, num_kv_heads * head_dim),    # 1536 -> 256
+        "v_proj": (hidden_size, num_kv_heads * head_dim),    # 1536 -> 256
+        "o_proj": (num_heads * head_dim, hidden_size),       # 1536 -> 1536
+        "gate_proj": (hidden_size, intermediate_size),       # 1536 -> 8960
+        "up_proj": (hidden_size, intermediate_size),         # 1536 -> 8960
+        "down_proj": (intermediate_size, hidden_size),       # 8960 -> 1536
+    }
+
+
+def calculate_lora_parameters(
+    r: int = 8,
+    target_modules: Optional[List[str]] = None,
+    dims: Optional[Dict[str, int]] = None,
+    actual_model: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Calculates exact theoretical and empirical LoRA parameter counts.
+    
+    For a linear projection W of shape (in_dim, out_dim):
+      LoRA A weight shape: (r, in_dim)  -> r * in_dim params
+      LoRA B weight shape: (out_dim, r) -> out_dim * r params
+      Total params per adapted projection = r * (in_dim + out_dim)
+    
+    Never hardcodes estimates; computes directly from verified architecture dimensions.
+    """
+    if dims is None:
+        dims = QWEN2_1_5B_DIMS
+    if target_modules is None:
+        target_modules = list(QWEN2_TARGET_MODULES)
+
+    shapes = compute_qwen2_projection_shapes(dims)
+    breakdown: Dict[str, Dict[str, int]] = {}
+    params_per_layer = 0
+
+    for mod in target_modules:
+        if mod not in shapes:
+            raise ValueError(f"Unknown module '{mod}'. Expected one of {list(shapes.keys())}")
+        in_dim, out_dim = shapes[mod]
+        lora_a = r * in_dim
+        lora_b = out_dim * r
+        mod_total = lora_a + lora_b
+        breakdown[mod] = {
+            "in_features": in_dim,
+            "out_features": out_dim,
+            "lora_a_params": lora_a,
+            "lora_b_params": lora_b,
+            "params_per_layer": mod_total
+        }
+        params_per_layer += mod_total
+
+    num_layers = dims["num_hidden_layers"]
+    calculated_trainable = params_per_layer * num_layers
+    total_base = dims["total_base_parameters"]
+    trainable_pct = (calculated_trainable / total_base) * 100.0
+
+    result: Dict[str, Any] = {
+        "rank": r,
+        "target_modules": target_modules,
+        "num_layers": num_layers,
+        "params_per_layer": params_per_layer,
+        "calculated_trainable_parameters": calculated_trainable,
+        "total_base_parameters": total_base,
+        "trainable_percentage": round(trainable_pct, 4),
+        "per_module_breakdown": breakdown,
+        "actual_trainable_parameters": None,
+        "actual_total_parameters": None,
+        "match": True
+    }
+
+    # If an instantiated PyTorch / PEFT model is provided, extract live counts
+    if actual_model is not None:
+        actual_trainable = sum(p.numel() for p in actual_model.parameters() if p.requires_grad)
+        actual_total = sum(p.numel() for p in actual_model.parameters())
+        result["actual_trainable_parameters"] = actual_trainable
+        result["actual_total_parameters"] = actual_total
+        result["match"] = (actual_trainable == calculated_trainable)
+        if not result["match"]:
+            result["discrepancy"] = actual_trainable - calculated_trainable
+
+    return result
+
 
 @dataclass
 class SLMLoRAConfig:
     """Configuration container for LoRA fine-tuning hyperparameters."""
     # Model Identification
     model_id: str = "Qwen/Qwen2.5-1.5B-Instruct"
-    model_revision: str = "main"
+    model_revision: str = PINNED_QWEN_REVISION
 
     # LoRA Architecture Parameters
     r: int = 8                          # LoRA rank dimension
@@ -76,6 +186,15 @@ class SLMLoRAConfig:
         for m in self.target_modules:
             if m not in QWEN2_TARGET_MODULES:
                 raise ValueError(f"Unrecognized target module '{m}' for Qwen2 architecture. Valid: {QWEN2_TARGET_MODULES}")
+
+    def compute_trainable_parameters(self, actual_model: Optional[Any] = None) -> Dict[str, Any]:
+        """Calculates dynamic trainable parameter counts for this configuration."""
+        self.validate()
+        return calculate_lora_parameters(
+            r=self.r,
+            target_modules=self.target_modules,
+            actual_model=actual_model
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts configuration to dictionary."""

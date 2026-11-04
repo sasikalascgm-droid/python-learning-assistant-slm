@@ -90,7 +90,7 @@ slm-python-learning-assistant/
 │   │   └── evaluate.py                 # Multi-metric benchmark (AST, validity, latency)
 │   ├── optimization/
 │   │   ├── __init__.py
-│   └── quantize.py                     # Quantization & memory optimization
+│   │   └── quantize.py                 # 4-bit NF4 quantization, AST validator & benchmark suite
 │   └── api/
 │       ├── __init__.py
 │       ├── main.py                     # FastAPI REST API endpoints
@@ -103,11 +103,14 @@ slm-python-learning-assistant/
 │   ├── __init__.py
 │   ├── test_dataset.py                 # Pytest suite: schema, splits, zero-leakage, AST
 │   ├── test_inference.py               # Pytest suite: ChatML prompt formatting & configs
+│   ├── test_lora_config.py             # Pytest suite: exact LoRA parameter math & loss masking
+│   ├── test_optimization.py            # Pytest suite: 4-bit quantization, AST & throughput
 │   └── test_api.py                     # API route & payload schema tests
 │
 ├── experiments/
 │   ├── baseline_results.json           # Raw outputs & latencies of baseline SLM across 38 test cases
-│   ├── optimization_results.json       # Memory & latency benchmark after optimization
+│   ├── baseline_results.backup.json    # Audited backup of reference baseline
+│   ├── optimization_results.json       # Memory & latency benchmark across 3 configurations
 │   └── evaluation_results.json         # Comparative evaluation records
 │
 └── reports/
@@ -117,7 +120,9 @@ slm-python-learning-assistant/
     ├── dataset_quality_report.md       # Phase 3: Comprehensive AST & Execution audit report
     ├── phase3_report.md                # Phase 3: Master dataset preparation report
     ├── baseline_report.md              # Phase 4: Baseline model performance analysis
-    ├── optimization_report.md          # Phase 6: Optimization benchmarks
+    ├── phase5_corrections.md           # Phase 5: Parameter math, loss masking & license audit
+    ├── phase5_report.md                # Phase 5: LoRA fine-tuning architecture report
+    ├── phase6_optimization_report.md   # Phase 6: 4-bit NF4 quantization & benchmark report
     ├── benchmark_report.md             # Phase 7: Pre-vs-post fine-tuning comparison
     └── final_report.md                 # Phase 8: Comprehensive technical project report
 ```
@@ -126,7 +131,7 @@ slm-python-learning-assistant/
 
 ## 🧪 Testing & Verification
 
-Run the automated Pytest suite (20 tests verifying dataset integrity, code blocks, inference formatting, and LoRA configuration):
+Run the automated Pytest suite (34 tests verifying dataset integrity, code blocks, inference formatting, exact LoRA parameter math, 4-bit quantization configs, AST validation, and throughput):
 
 ```bash
 # Run all unit tests
@@ -144,16 +149,17 @@ Due to laptop host memory constraints (7.75 GB RAM, no discrete GPU), LoRA fine-
 2. The notebook clones the repository or loads `data/processed/train.jsonl` (306 examples) and `data/processed/validation.jsonl` (38 examples).
 3. The training pipeline applies:
    - Rank $r=8$, $\alpha=16$, dropout=0.05 on all 7 linear projections (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`).
+   - Exact verified parameter count: **9,232,384 trainable parameters** (**0.5981%** of base model).
    - ChatML prompt masking: Loss is strictly computed on assistant responses (prompt tokens masked with `labels = -100`).
    - Strict test-set isolation assertion: verifies zero overlap with `data/processed/test.jsonl`.
 4. Outputs the trained PEFT adapter to `artifacts/lora_adapter/`.
 
 To perform a pre-flight dry-run locally:
 ```bash
-python src/model/train_lora.py --dry-run
+python src/model/train_lora.py
 ```
 
-### Loading the Fine-Tuned Adapter
+### Loading the Fine-Tuned Adapter (Unquantized FP16)
 To load the fine-tuned LoRA adapter on top of `Qwen2.5-1.5B-Instruct`:
 
 ```python
@@ -162,12 +168,14 @@ from peft import PeftModel
 import torch
 
 base_model_id = "Qwen/Qwen2.5-1.5B-Instruct"
+pinned_revision = "c644d673f4439c36291a1827471fb3be52382e26"
 adapter_dir = "artifacts/lora_adapter"
 
 # 1. Load base tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+tokenizer = AutoTokenizer.from_pretrained(base_model_id, revision=pinned_revision)
 base_model = AutoModelForCausalLM.from_pretrained(
     base_model_id,
+    revision=pinned_revision,
     torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
     device_map="auto"
 )
@@ -175,8 +183,18 @@ base_model = AutoModelForCausalLM.from_pretrained(
 # 2. Attach LoRA adapter
 model = PeftModel.from_pretrained(base_model, adapter_dir)
 model.eval()
+```
 
-# Ready for domain-specific Python instruction inference!
+### Loading the 4-bit NF4 Quantized Model with Adapter
+For memory-constrained local environments (~1.7 GB VRAM / operational memory):
+
+```python
+from src.optimization.quantize import load_quantized_model_with_adapter
+
+model, tokenizer, meta = load_quantized_model_with_adapter(
+    model_id="Qwen/Qwen2.5-1.5B-Instruct",
+    adapter_dir="artifacts/lora_adapter"
+)
 ```
 
 ---
@@ -188,8 +206,10 @@ model.eval()
 - [x] **Phase 2: SLM Research & Model Selection** — Comparative research on Qwen2.5-1.5B, SmolLM2-1.7B, and Llama-3.2-1B against local CPU & Colab GPU profiles.
 - [x] **Phase 3: Dataset Preparation & Validation** — 382 QA pairs across 18 beginner topics, 100% AST-valid code blocks, safe execution validation (200/200 passed), leakage-free 80:10:10 split.
 - [x] **Phase 4: Baseline Model Implementation & Evaluation** — Pretrained `Qwen2.5-1.5B-Instruct` benchmark across 38 held-out test cases, ChatML formatting, latency/throughput profiling, `experiments/baseline_results.json`, and `reports/baseline_report.md`.
-- [x] **Phase 5: LoRA Fine-Tuning Pipeline & Architecture** — Validated `SLMLoRAConfig` (r=8, α=16), loss-masked SFT pipeline (`train_lora.py`), Colab GPU notebook (`phase5_lora_training.ipynb`), 7 new unit tests (20/20 passing), and comprehensive Phase 5 audit report (`reports/phase5_report.md`).
-- [ ] **Phase 6: Model Optimization** — Quantization (INT4 / NF4) and generation parameter tuning.
+- [x] **Phase 5: LoRA Fine-Tuning Pipeline & Architecture** — Validated `SLMLoRAConfig` (r=8, α=16), loss-masked SFT pipeline (`train_lora.py`), Colab GPU notebook (`phase5_lora_training.ipynb`), exact LoRA parameter derivation (9,232,384 params / 0.5981%), and Phase 5 corrections audit report (`reports/phase5_corrections.md`).
+- [x] **Phase 6: Model Optimization & Controlled Benchmarking** — 4-bit NF4 quantization (`src/optimization/quantize.py`), adapter preservation, AST code validator, generation parameter optimization, 34 automated unit tests, and optimization report (`reports/phase6_optimization_report.md`).
+- [ ] **Phase 7: Comprehensive Comparative Evaluation** — Automated AST parsing, technical accuracy, speed and memory benchmarks across test split.
+- [ ] **Phase 8: FastAPI Backend & Streamlit Frontend** — Production REST API, interactive UI, Pytest suite, final technical report.
 - [ ] **Phase 7: Comprehensive Evaluation** — Automated AST parsing, technical accuracy, speed and memory benchmarks on held-out test split.
 - [ ] **Phase 8: FastAPI Backend & Streamlit Frontend** — Production REST API, interactive UI, Pytest suite, final technical report.
 

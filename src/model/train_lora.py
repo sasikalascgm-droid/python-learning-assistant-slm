@@ -20,7 +20,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.model.lora_config import SLMLoRAConfig, get_default_lora_config, QWEN2_TARGET_MODULES
+from src.model.lora_config import (
+    SLMLoRAConfig,
+    get_default_lora_config,
+    QWEN2_TARGET_MODULES,
+    PINNED_QWEN_REVISION,
+    calculate_lora_parameters
+)
 from src.evaluation.training_metrics import TrainingMetricsTracker
 from src.model.load_model import load_config, resolve_cache_directory
 
@@ -126,29 +132,46 @@ def tokenize_with_prompt_masking(
     prompt_text: str,
     response_text: str,
     tokenizer: Any,
-    max_length: int = 512
-) -> Dict[str, List[int]]:
+    max_length: int = 512,
+    pad_to_max: bool = False
+) -> Dict[str, Any]:
     """
     Tokenizes full prompt+response and applies -100 masking to prompt tokens
     so loss is calculated exclusively on response tokens.
+    
+    Guarantees:
+    1. Prompt tokens are masked with -100 (PyTorch CrossEntropyLoss ignore index).
+    2. Response tokens remain unmasked and contribute to loss gradient.
+    3. Padding tokens (if padded) are assigned attention_mask=0 and label=-100.
+    4. Tracks whether the sequence underwent truncation.
     """
     prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
     response_ids = tokenizer.encode(response_text, add_special_tokens=False)
 
     full_ids = prompt_ids + response_ids
+    truncated = False
     if len(full_ids) > max_length:
         full_ids = full_ids[:max_length]
+        truncated = True
 
     # Create labels: mask prompt tokens with -100
     prompt_len = min(len(prompt_ids), len(full_ids))
     labels = [-100] * prompt_len + full_ids[prompt_len:]
-
     attention_mask = [1] * len(full_ids)
+
+    # Optional static padding
+    if pad_to_max and len(full_ids) < max_length:
+        pad_len = max_length - len(full_ids)
+        pad_token_id = getattr(tokenizer, "pad_token_id", 0) or 0
+        full_ids = full_ids + [pad_token_id] * pad_len
+        attention_mask = attention_mask + [0] * pad_len
+        labels = labels + [-100] * pad_len
 
     return {
         "input_ids": full_ids,
         "attention_mask": attention_mask,
-        "labels": labels
+        "labels": labels,
+        "truncated": truncated
     }
 
 
@@ -196,11 +219,18 @@ def run_lora_training(
     out_dir = Path(cfg.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    param_analysis = calculate_lora_parameters(r=cfg.r, target_modules=cfg.target_modules)
+    print(
+        f"LoRA Parameter Analysis: {param_analysis['calculated_trainable_parameters']:,} trainable parameters "
+        f"({param_analysis['trainable_percentage']:.4f}% of {param_analysis['total_base_parameters']:,} base params)."
+    )
+
     # Save training configuration
     train_metadata = {
         "model_id": cfg.model_id,
         "model_revision": cfg.model_revision,
         "lora_parameters": cfg.to_dict(),
+        "trainable_parameters_analysis": param_analysis,
         "dataset_provenance": data_hashes,
         "dry_run": dry_run
     }

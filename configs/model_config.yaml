@@ -24,7 +24,7 @@ hardware:
 model:
   name: "Qwen2.5-1.5B-Instruct"
   model_id: "Qwen/Qwen2.5-1.5B-Instruct"
-  revision: "main"
+  revision: "c644d673f4439c36291a1827471fb3be52382e26" # Pinned immutable commit hash
   tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
   architecture: "Qwen2ForCausalLM"
   license: "Apache-2.0"
@@ -71,8 +71,8 @@ dataset:
 training:
   method: "lora"
   task_type: "CAUSAL_LM"
-  r: 16
-  lora_alpha: 32
+  r: 8
+  lora_alpha: 16
   lora_dropout: 0.05
   bias: "none"
   target_modules:
@@ -87,15 +87,15 @@ training:
   per_device_eval_batch_size: 2
   gradient_accumulation_steps: 4
   learning_rate: 0.0002
-  num_train_epochs: 3
-  warmup_ratio: 0.03
+  num_train_epochs: 2
+  warmup_ratio: 0.05
   weight_decay: 0.01
-  fp16: false
-  bf16: true                     # Supported on Colab Ampere/T4 mixed precision
+  fp16: true                     # Required for Turing T4 GPU
+  bf16: false                    # Set true only on Ampere (SM 8.0+) or newer
   logging_steps: 10
   save_strategy: "epoch"
   eval_strategy: "epoch"
-  output_dir: "models/lora_adapter"
+  output_dir: "artifacts/lora_adapter"
 
 api:
   host: "0.0.0.0"

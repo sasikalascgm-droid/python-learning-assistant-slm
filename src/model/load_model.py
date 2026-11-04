@@ -124,6 +124,7 @@ def load_slm(
 
     config = load_config(config_path)
     model_id = config.get("model", {}).get("model_id", "Qwen/Qwen2.5-1.5B-Instruct")
+    model_revision = config.get("model", {}).get("revision", "c644d673f4439c36291a1827471fb3be52382e26")
     target_device = "cpu" if force_cpu else config.get("hardware", {}).get("target_device", "auto")
 
     # If already loaded and matching configuration, return singleton
@@ -163,9 +164,10 @@ def load_slm(
         print(f"WARNING: Host machine has only {mem_info['avail_ram_gb']} GB available RAM. Loading 1.5B weights in FP32 requires ~6.2 GB.")
         print("Recommended: Run baseline evaluation via Google Colab GPU or use 4-bit quantized runtime.")
 
-    print(f"Loading tokenizer for '{model_id}' from cache '{cache_dir}'...")
+    print(f"Loading tokenizer for '{model_id}' (revision={model_revision}) from cache '{cache_dir}'...")
     tokenizer = AutoTokenizer.from_pretrained(
         model_id,
+        revision=model_revision,
         trust_remote_code=config.get("model", {}).get("trust_remote_code", False),
         cache_dir=cache_dir
     )
@@ -173,9 +175,10 @@ def load_slm(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    print(f"Loading model weights for '{model_id}' (device={device_str}, dtype={torch_dtype})...")
+    print(f"Loading model weights for '{model_id}' (revision={model_revision}, device={device_str}, dtype={torch_dtype})...")
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
+        revision=model_revision,
         torch_dtype=torch_dtype,
         low_cpu_mem_usage=config.get("model", {}).get("low_cpu_mem_usage", True),
         trust_remote_code=config.get("model", {}).get("trust_remote_code", False),
@@ -195,6 +198,7 @@ def load_slm(
 
     metadata = {
         "model_id": model_id,
+        "revision": model_revision,
         "device": device_str,
         "torch_dtype": str(torch_dtype),
         "cache_dir": cache_dir,
