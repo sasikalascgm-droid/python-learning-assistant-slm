@@ -1,0 +1,35 @@
+{
+  "api_url": "http://127.0.0.1:8009",
+  "ui_url": "http://127.0.0.1:8509",
+  "streamlit_health_endpoint": "http://127.0.0.1:8509/_stcore/health",
+  "streamlit_health_status": 200,
+  "streamlit_main_status": 200,
+  "checks": [
+    {
+      "name": "no_exceptions",
+      "passed": true
+    },
+    {
+      "name": "sidebar_backend_communication",
+      "passed": true,
+      "details": {
+        "online": true,
+        "model_id": true,
+        "standby": true
+      }
+    },
+    {
+      "name": "tab_count",
+      "passed": true,
+      "count": 4
+    },
+    {
+      "name": "tab1_ask_execution_badge",
+      "passed": true
+    },
+    {
+      "name": "post_interaction_no_exceptions",
+      "passed": true
+    }
+  ]
+}

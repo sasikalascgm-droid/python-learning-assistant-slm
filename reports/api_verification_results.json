@@ -1,0 +1,257 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "status_code": 200,
+    "latency_seconds": 0.013,
+    "response": {
+      "project": "slm-python-learning-assistant",
+      "version": "1.0.0",
+      "status": "operational",
+      "docs_url": "/docs"
+    },
+    "error": null
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "status_code": 200,
+    "latency_seconds": 0.0059,
+    "response": {
+      "status": "standby",
+      "project": "slm-python-learning-assistant",
+      "version": "1.0.0",
+      "model_id": "Qwen/Qwen2.5-1.5B-Instruct",
+      "revision": "c644d673f4439c36291a1827471fb3be52382e26",
+      "model_loaded": false,
+      "adapter_exists": false,
+      "adapter_loaded": false,
+      "cuda_available": false,
+      "gpu_name": null,
+      "gpu_vram_gb": 0.0,
+      "host_ram_total_gb": 7.75,
+      "host_ram_avail_gb": 0.49,
+      "active_configuration": "development_fallback",
+      "adapter_status": "pending_colab_training"
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/ask",
+    "status_code": 200,
+    "latency_seconds": 0.0094,
+    "response": {
+      "question": "How do lists work in Python and how do I append items?",
+      "answer": "### Explanation:\nA list in Python is an ordered, mutable sequence that can store elements of various data types.\n\n### Key Concepts:\n- Lists use square brackets [].\n- Lists are mutable (can be modified in-place).\n- Elements are zero-indexed.\n\n### Python Example:\n```python\nfruits = ['apple', 'banana', 'orange']\nfruits.append('mango')\nprint(fruits[0])  # Output: apple\n```",
+      "code_example": "fruits = ['apple', 'banana', 'orange']\nfruits.append('mango')\nprint(fruits[0])  # Output: apple",
+      "mode": "development_fallback",
+      "model_status": "not_loaded",
+      "latency_seconds": 0.001,
+      "note": "Response generated via development fallback. Real SLM inference requires loaded Qwen2.5-1.5B model."
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/ask",
+    "status_code": 422,
+    "latency_seconds": 0.0254,
+    "response": {
+      "detail": [
+        {
+          "type": "value_error",
+          "loc": [
+            "body",
+            "question"
+          ],
+          "msg": "Value error, Question cannot be empty or whitespace only.",
+          "input": "   ",
+          "ctx": {
+            "error": {}
+          }
+        }
+      ]
+    },
+    "error": "HTTPError: 422"
+  },
+  {
+    "method": "POST",
+    "path": "/ask",
+    "status_code": 422,
+    "latency_seconds": 0.0277,
+    "response": {
+      "detail": [
+        {
+          "type": "string_too_short",
+          "loc": [
+            "body",
+            "question"
+          ],
+          "msg": "String should have at least 3 characters",
+          "input": "a",
+          "ctx": {
+            "min_length": 3
+          }
+        }
+      ]
+    },
+    "error": "HTTPError: 422"
+  },
+  {
+    "method": "POST",
+    "path": "/explain-code",
+    "status_code": 200,
+    "latency_seconds": 0.0189,
+    "response": {
+      "code": "def add(x, y):\n    return x + y\n\nprint(add(2, 3))",
+      "syntax_valid": true,
+      "syntax_error": null,
+      "explanation": "The provided Python code contains 4 lines and is syntactically valid.\n\n### Line-by-Line Walkthrough:\n- **Line 1** (`def add(x, y):`): Defines function 'add'.\n- **Line 2** (`return x + y`): Returns output value from function to caller.\n- **Line 4** (`print(add(2, 3))`): Outputs value to standard console.",
+      "line_by_line": [
+        {
+          "line_number": 1,
+          "code": "def add(x, y):",
+          "explanation": "Defines function 'add'."
+        },
+        {
+          "line_number": 2,
+          "code": "    return x + y",
+          "explanation": "Returns output value from function to caller."
+        },
+        {
+          "line_number": 4,
+          "code": "print(add(2, 3))",
+          "explanation": "Outputs value to standard console."
+        }
+      ],
+      "mode": "development_fallback",
+      "model_status": "not_loaded",
+      "latency_seconds": 0.0,
+      "note": "Analysis generated via static AST analysis and fallback logic."
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/explain-code",
+    "status_code": 200,
+    "latency_seconds": 0.0069,
+    "response": {
+      "code": "def broken(\n    print('Missing closing parenthesis')",
+      "syntax_valid": false,
+      "syntax_error": "SyntaxError at line 1, col 11: '(' was never closed",
+      "explanation": "### \u26a0\ufe0f Code Syntax Issue Detected:\nSyntaxError at line 1, col 11: '(' was never closed\n\nPlease fix the syntax error above before running the snippet. Common syntax mistakes include missing colons `:` at the end of loop/function headers, unmatched parentheses, or incorrect indentation.",
+      "line_by_line": [
+        {
+          "line_number": 1,
+          "code": "def broken(",
+          "explanation": "Defines function 'broken'."
+        },
+        {
+          "line_number": 2,
+          "code": "    print('Missing closing parenthesis')",
+          "explanation": "Outputs value to standard console."
+        }
+      ],
+      "mode": "development_fallback",
+      "model_status": "not_loaded",
+      "latency_seconds": 0.001,
+      "note": "Analysis generated via static AST analysis and fallback logic."
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/explain-code",
+    "status_code": 422,
+    "latency_seconds": 0.0036,
+    "response": {
+      "detail": [
+        {
+          "type": "value_error",
+          "loc": [
+            "body",
+            "code"
+          ],
+          "msg": "Value error, Code cannot be empty or whitespace only.",
+          "input": "   \n  ",
+          "ctx": {
+            "error": {}
+          }
+        }
+      ]
+    },
+    "error": "HTTPError: 422"
+  },
+  {
+    "method": "POST",
+    "path": "/practice",
+    "status_code": 200,
+    "latency_seconds": 0.0084,
+    "response": {
+      "topic": "lists",
+      "difficulty": "beginner",
+      "title": "Reverse and Filter Positive Numbers",
+      "problem_statement": "Write a function `filter_positives(nums)` that takes a list of integers and returns only the positive numbers in reverse order.",
+      "starter_code": "def filter_positives(nums: list[int]) -> list[int]:\n    # Your code here\n    pass\n",
+      "hints": [
+        "Hint 1: You can filter numbers using a list comprehension with an 'if num > 0' condition.",
+        "Hint 2: To reverse a list, you can use slice notation `[::-1]` or the `reversed()` function.",
+        "Hint 3: Combining both: `[x for x in nums if x > 0][::-1]`"
+      ],
+      "solution": "def filter_positives(nums):\n    return [x for x in nums if x > 0][::-1]",
+      "mode": "development_fallback",
+      "model_status": "not_loaded",
+      "latency_seconds": 0.0,
+      "note": "Practice problem generated via development fallback."
+    },
+    "error": null
+  },
+  {
+    "method": "POST",
+    "path": "/practice",
+    "status_code": 422,
+    "latency_seconds": 0.0028,
+    "response": {
+      "detail": [
+        {
+          "type": "value_error",
+          "loc": [
+            "body",
+            "difficulty"
+          ],
+          "msg": "Value error, Difficulty must be one of {'advanced', 'beginner', 'intermediate'}, got 'expert_impossible'.",
+          "input": "expert_impossible",
+          "ctx": {
+            "error": {}
+          }
+        }
+      ]
+    },
+    "error": "HTTPError: 422"
+  },
+  {
+    "method": "POST",
+    "path": "/practice",
+    "status_code": 422,
+    "latency_seconds": 0.0303,
+    "response": {
+      "detail": [
+        {
+          "type": "value_error",
+          "loc": [
+            "body",
+            "topic"
+          ],
+          "msg": "Value error, Topic cannot be empty or whitespace only.",
+          "input": "   ",
+          "ctx": {
+            "error": {}
+          }
+        }
+      ]
+    },
+    "error": "HTTPError: 422"
+  }
+]
