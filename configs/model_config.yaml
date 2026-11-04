@@ -2,47 +2,31 @@ project:
   name: "slm-python-learning-assistant"
   version: "1.0.0"
   description: "AI-powered Python Learning Assistant using Small Language Models (SLM)"
+  selected_slm: "Qwen/Qwen2.5-1.5B-Instruct"
 
 hardware:
-  target_device: "cpu"  # Host is verified Intel Core i3-N305 with Intel UHD Graphics (No CUDA)
-  cpu_threads: 4        # Optimized thread pool for 8-core Alder Lake-N CPU
-  precision: "float32"  # Note: FP32 requires ~6.1GB for 1.5B weights; recommended local execution uses INT4/GGUF
-  quantization_preferred: "int4"
-  colab_gpu: "T4"       # Designated GPU environment for LoRA fine-tuning and batch benchmarks
-  host_ram_gb: 7.75
-  host_free_ram_gb: 0.88
-  drive_c_free_gb: 7.62
-  drive_d_free_gb: 49.91
+  target_device: "cpu"           # Local execution environment (Intel Core i3-N305, 8 cores, Intel UHD Graphics)
+  cpu_threads: 4                 # Thread pool allocation for local CPU matrix operations
+  local_precision: "float32"     # Standard CPU floating point format
+  quantization_preferred: "int4" # Recommended for <2GB RAM usage on host (7.75 GB total host RAM)
+  cloud_training_gpu: "T4"       # Google Colab free tier GPU (15.36 GB VRAM) for LoRA fine-tuning
+  host_profile:
+    ram_total_gb: 7.75
+    ram_available_gb: 0.88
+    drive_c_free_gb: 7.62
+    drive_d_free_gb: 49.91
 
-candidates:
-  qwen2_5_1_5b:
-    model_id: "Qwen/Qwen2.5-1.5B-Instruct"
-    params: "1.54B"
-    context_length: 32768
-    license: "Apache-2.0"
-    default_revision: "main"
-    tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
-  smollm2_1_7b:
-    model_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-    params: "1.71B"
-    context_length: 8192
-    license: "Apache-2.0"
-    default_revision: "main"
-    tokenizer_id: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-  llama_3_2_1b:
-    model_id: "meta-llama/Llama-3.2-1B-Instruct"
-    params: "1.23B"
-    context_length: 131072
-    license: "Llama 3.2 Community License"
-    default_revision: "main"
-    tokenizer_id: "meta-llama/Llama-3.2-1B-Instruct"
-
-selected_model:
+model:
+  name: "Qwen2.5-1.5B-Instruct"
   model_id: "Qwen/Qwen2.5-1.5B-Instruct"
   revision: "main"
   tokenizer_id: "Qwen/Qwen2.5-1.5B-Instruct"
-  device: "cpu"
-  torch_dtype: "auto"
+  architecture: "Qwen2ForCausalLM"
+  license: "Apache-2.0"
+  parameters: 1543714816         # 1.54B total parameters
+  context_length: 32768
+  max_generation_length: 8192
+  trust_remote_code: false
   low_cpu_mem_usage: true
 
 inference:
@@ -51,6 +35,22 @@ inference:
   top_p: 0.9
   repetition_penalty: 1.1
   do_sample: true
+  system_prompt: |
+    You are an expert, patient, and friendly Python Learning Assistant.
+    Your mission is to help beginner students master Python programming.
+    Follow these principles:
+    1. Explain concepts in clear, simple English without unnecessary jargon.
+    2. Provide idiomatic, clean, and bug-free Python code examples.
+    3. Break down code step-by-step or line-by-line when explaining snippets.
+    4. When diagnosing errors, clearly explain the cause and provide the exact fix.
+    5. Always encourage the student with beginner-friendly practice questions and hints.
+
+optimization:
+  method: "int4_quantization"
+  bits: 4
+  compute_dtype: "float32"
+  quant_type: "nf4"
+  double_quant: true
 
 dataset:
   train_split: 0.80
@@ -65,22 +65,28 @@ dataset:
 
 training:
   method: "lora"
+  task_type: "CAUSAL_LM"
   r: 16
   lora_alpha: 32
   lora_dropout: 0.05
   bias: "none"
-  task_type: "CAUSAL_LM"
   target_modules:
     - "q_proj"
     - "k_proj"
     - "v_proj"
     - "o_proj"
-  batch_size: 2
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
   gradient_accumulation_steps: 4
   learning_rate: 0.0002
   num_train_epochs: 3
   warmup_ratio: 0.03
   weight_decay: 0.01
+  fp16: false
+  bf16: true                     # Supported on Colab Ampere/T4 mixed precision
   logging_steps: 10
   save_strategy: "epoch"
   eval_strategy: "epoch"
@@ -90,3 +96,5 @@ api:
   host: "0.0.0.0"
   port: 8000
   reload: false
+  title: "Python Learning Assistant API"
+  version: "1.0.0"
