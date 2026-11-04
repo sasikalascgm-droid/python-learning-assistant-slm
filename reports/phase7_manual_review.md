@@ -12,7 +12,7 @@
 In accordance with Section D14 of the Phase 7 specification:
 > *"Do not claim that scores are objective if they were manually assigned. If an independent human review is unavailable, clearly label the results as model-assisted or self-reviewed."*
 
-This qualitative evaluation was conducted as a **structured self-review** by the engineering and curriculum team. Because an external double-blind panel of independent beginner students was not available during development, all qualitative scores represent **internal self-reviewed evaluations** anchored to an objective, explicit 5-point rubric.
+This qualitative evaluation was conducted as a **preliminary, internal subjective self-review** by the project development team. Because an external double-blind panel of independent beginner students was not available during development, all qualitative scores represent **internal self-reviewed reference evaluations** anchored to an objective, explicit 5-point rubric. They must NOT be cited as independently verified final model scores. Fine-tuned model quality is pending actual remote training and verification.
 
 ---
 

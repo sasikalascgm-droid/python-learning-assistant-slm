@@ -74,21 +74,24 @@ Detailed tensor breakdown for `Qwen/Qwen2.5-1.5B-Instruct` (Revision `c644d673f4
 
 Evaluated across the 38 held-out test examples (`data/processed/test.jsonl`). Test isolation is strictly preserved (zero leakage into training or hyperparameter selection).
 
+> [!IMPORTANT]
+> **Audit Status Clarification:**
+> Metrics for Configuration A represent historical, unverified reference values from the initial baseline compilation. They are marked `REFERENCE_UNVERIFIED` and must NOT be cited as verified actual system throughput or latency. All live benchmark metrics for fine-tuned and quantized models are `PENDING_COLAB_GPU_EXECUTION`.
+
 | Evaluation Metric | Configuration A: Base FP16 | Configuration B: LoRA FP16 | Configuration C: LoRA 4-bit NF4 |
 | :--- | :---: | :---: | :---: |
-| **Execution Status** | `REFERENCE_UNVERIFIED` | `PENDING_COLAB_GPU_EXECUTION` | `PENDING_COLAB_GPU_EXECUTION` |
-| **Model Disk Size** | 3.09 GB | ~3.12 GB | **~0.95 GB** |
-| **Operating VRAM** | 4.52 GB | ~4.60 GB (est.) | **~1.70 GB (est.)** |
-| **Model Load Time** | 18.52 s | `NOT_MEASURED` | `NOT_MEASURED` |
-| **First-Request Latency** | 5.42 s | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Warm Latency (Mean)** | 5.751 s | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Latency Median** | 4.60 s | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Latency P95** | 10.21 s | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Total Generated Tokens** | 2,749 tokens | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Aggregate Throughput** | **46.81 tokens/s** | `NOT_MEASURED` | `NOT_MEASURED` |
-| **AST Syntax Pass Rate** | **100.0% (38/38)** | `NOT_MEASURED` | `NOT_MEASURED` |
-| **Runtime Execution** | `NOT_RUN` (Safety Guard) | `NOT_RUN` (Safety Guard) | `NOT_RUN` (Safety Guard) |
-| **Overall Quality Score (1-5)**| **3.94 / 5.00** | `PENDING_REVIEW` | `PENDING_REVIEW` |
+| **Execution Status** | `REFERENCE_UNVERIFIED` (Historical) | `PENDING_COLAB_GPU_EXECUTION` | `PENDING_COLAB_GPU_EXECUTION` |
+| **Model Disk Size** | ~3.09 GB (`ESTIMATED_NOT_MEASURED`) | ~3.12 GB (`ESTIMATED_NOT_MEASURED`) | **~0.95 GB (`ESTIMATED_NOT_MEASURED`)** |
+| **Operating VRAM** | ~4.52 GB (`ESTIMATED_NOT_MEASURED`) | ~4.60 GB (`ESTIMATED_NOT_MEASURED`) | **~1.70 GB (`ESTIMATED_NOT_MEASURED`)** |
+| **Model Cold Load Time**| 18.52 s (`REFERENCE_UNVERIFIED`) | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Mean Generation Latency**| 5.751 s (`REFERENCE_UNVERIFIED`) | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Latency Median** | 4.60 s (`REFERENCE_UNVERIFIED`) | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Latency P95** | 10.21 s (`REFERENCE_UNVERIFIED`) | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Total Generated Tokens** | 2,749 tokens (`REFERENCE_UNVERIFIED`) | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Aggregate Throughput**| **46.81 tok/s (`REFERENCE_UNVERIFIED`)**| `NOT_MEASURED` | `NOT_MEASURED` |
+| **AST Syntax Pass Rate**| **100.0% (38/38 Parseable)** | `NOT_MEASURED` | `NOT_MEASURED` |
+| **Functional Execution** | `NOT_RUN` (Host Security Guard) | `NOT_RUN` (Host Security Guard) | `NOT_RUN` (Host Security Guard) |
+| **Overall Quality Score**| **3.94 / 5.00 (`SELF_REVIEWED`)** | `PENDING_REVIEW` | `PENDING_REVIEW` |
 
 ---
 
@@ -96,8 +99,11 @@ Evaluated across the 38 held-out test examples (`data/processed/test.jsonl`). Te
 
 Quality was assessed using the 9-dimensional scoring rubric via internal self-review ([`reports/phase7_manual_review.md`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/reports/phase7_manual_review.md)):
 
+> [!NOTE]
+> This review represents a preliminary, internal subjective evaluation conducted by project developers using a structured 9-point rubric. It is **NOT** an independently verified model-quality benchmark or double-blind student study. Fine-tuned model quality is pending actual remote training and verification.
+
 ```
-Baseline Quality Score Breakdown (Scale 1.0 - 5.0):
+Baseline Quality Score Breakdown (Scale 1.0 - 5.0, Preliminary Internal Review):
 ├── Factual Correctness       : 4.2 / 5.0  (Accurate standard library semantics)
 ├── Relevance                 : 4.3 / 5.0  (Directly addresses user prompt)
 ├── Beginner-Friendly Tone    : 3.8 / 5.0  (Occasionally introduces complex CS terms)
@@ -107,7 +113,7 @@ Baseline Quality Score Breakdown (Scale 1.0 - 5.0):
 ├── Error Explanation Quality : 3.7 / 5.0  (Fixes code quickly; lacks traceback pedagogy)
 ├── Line-by-Line Quality      : 3.6 / 5.0  (Often summarizes rather than granular breakdown)
 └── Practice Question Quality : 3.8 / 5.0  (Questions are solid but hints are ungraduated)
-Total Overall Average         : 3.94 / 5.00
+Total Overall Average         : 3.94 / 5.00 (PRELIMINARY SUBJECTIVE REFERENCE)
 ```
 
 ---
