@@ -109,6 +109,6 @@
     "train_count": "306",
     "val_count": "38"
   },
-  "precision": "float32 (CPU Fallback)",
+  "precision": "float32",
   "dry_run": true
 }
