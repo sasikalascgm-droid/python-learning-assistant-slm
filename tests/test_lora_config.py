@@ -8,7 +8,8 @@ from src.model.lora_config import (
     QWEN2_TARGET_MODULES,
     QWEN2_1_5B_DIMS,
     calculate_lora_parameters,
-    compute_qwen2_projection_shapes
+    compute_qwen2_projection_shapes,
+    detect_hardware_precision
 )
 from src.model.train_lora import (
     load_training_datasets,
@@ -232,3 +233,57 @@ def test_truncation_detection():
     )
     assert features["truncated"] is True
     assert len(features["input_ids"]) == 20
+
+
+def test_precision_detection_tesla_t4_always_fp16():
+    """Verify Tesla T4 (SM 7.5) always selects FP16=True, BF16=False even if is_bf16_supported returns True."""
+    # Colab anomaly: is_bf16_supported returns True on T4
+    use_fp16, use_bf16, prec = detect_hardware_precision(major=7, minor=5, bf16_supported=True)
+    assert use_fp16 is True
+    assert use_bf16 is False
+    assert prec == "float16"
+
+    # Standard check: is_bf16_supported returns False
+    use_fp16_2, use_bf16_2, prec_2 = detect_hardware_precision(major=7, minor=5, bf16_supported=False)
+    assert use_fp16_2 is True
+    assert use_bf16_2 is False
+    assert prec_2 == "float16"
+
+    # Auto-configure precision on SLMLoRAConfig
+    cfg = get_default_lora_config()
+    sel_prec = cfg.auto_configure_precision(major=7, minor=5, bf16_supported=True)
+    assert cfg.fp16 is True
+    assert cfg.bf16 is False
+    assert sel_prec == "float16"
+
+
+def test_precision_detection_ampere_sm80():
+    """Verify Ampere (SM 8.0) selects BF16 only when supported, otherwise falls back to FP16."""
+    # SM 8.0 with BF16 support
+    use_fp16, use_bf16, prec = detect_hardware_precision(major=8, minor=0, bf16_supported=True)
+    assert use_fp16 is False
+    assert use_bf16 is True
+    assert prec == "bfloat16"
+
+    # SM 8.0 without BF16 support (fallback)
+    use_fp16_fb, use_bf16_fb, prec_fb = detect_hardware_precision(major=8, minor=0, bf16_supported=False)
+    assert use_fp16_fb is True
+    assert use_bf16_fb is False
+    assert prec_fb == "float16"
+
+    # Auto-configure precision on SLMLoRAConfig
+    cfg = get_default_lora_config()
+    sel_prec = cfg.auto_configure_precision(major=8, minor=0, bf16_supported=True)
+    assert cfg.fp16 is False
+    assert cfg.bf16 is True
+    assert sel_prec == "bfloat16"
+
+
+def test_precision_detection_cpu_fallback():
+    """Verify CPU fallback when CUDA is not present."""
+    use_fp16, use_bf16, prec = detect_hardware_precision()
+    # On the test host (no discrete GPU), must be CPU fallback
+    assert use_fp16 is False
+    assert use_bf16 is False
+    assert prec == "float32"
+

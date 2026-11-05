@@ -38,23 +38,47 @@ QWEN2_1_5B_DIMS: Dict[str, int] = {
 PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"
 
 
-def detect_hardware_precision() -> Tuple[bool, bool, str]:
+def detect_hardware_precision(
+    major: Optional[int] = None,
+    minor: Optional[int] = None,
+    bf16_supported: Optional[bool] = None
+) -> Tuple[bool, bool, str]:
     """
     Detects whether CUDA hardware natively supports BF16 or FP16 based on GPU compute capability.
+
+    Rules:
+    - SM 8.0 or higher AND BF16 supported: use BF16 (fp16=False, bf16=True, precision="bfloat16").
+    - Below SM 8.0 (e.g. Tesla T4 SM 7.5): use FP16 (fp16=True, bf16=False, precision="float16").
+    - CPU / Fallback: FP32 (fp16=False, bf16=False, precision="float32").
+
+    Parameters:
+        major: Optional override for GPU compute capability major version (for testing / mocking).
+        minor: Optional override for GPU compute capability minor version (for testing / mocking).
+        bf16_supported: Optional override for torch.cuda.is_bf16_supported() (for testing / mocking).
+
     Returns:
         (use_fp16, use_bf16, precision_display_str)
     """
+    # 1. Deterministic evaluation for explicit parameters (unit tests / overrides)
+    if major is not None:
+        is_bf16_sup = bf16_supported if bf16_supported is not None else False
+        if major >= 8 and is_bf16_sup:
+            return False, True, "bfloat16"
+        return True, False, "float16"
+
+    # 2. Live environment hardware inspection
     try:
         import torch
         if torch.cuda.is_available():
-            major, minor = torch.cuda.get_device_capability(0)
-            compute_cap = major + minor / 10.0
-            if compute_cap >= 8.0 and torch.cuda.is_bf16_supported():
-                return False, True, f"bfloat16 (SM {major}.{minor} Ampere/Hopper GPU)"
-            return True, False, f"float16 (SM {major}.{minor} Tesla T4/Turing GPU)"
+            dev_major, dev_minor = torch.cuda.get_device_capability(0)
+            dev_bf16_sup = torch.cuda.is_bf16_supported() if hasattr(torch.cuda, "is_bf16_supported") else False
+            if dev_major >= 8 and dev_bf16_sup:
+                return False, True, "bfloat16"
+            return True, False, "float16"
     except Exception:
         pass
-    return False, False, "float32 (CPU Fallback)"
+
+    return False, False, "float32"
 
 
 
@@ -192,9 +216,16 @@ class SLMLoRAConfig:
     train_file: str = "data/processed/train.jsonl"
     val_file: str = "data/processed/validation.jsonl"
 
-    def auto_configure_precision(self) -> str:
+    def auto_configure_precision(
+        self,
+        major: Optional[int] = None,
+        minor: Optional[int] = None,
+        bf16_supported: Optional[bool] = None
+    ) -> str:
         """Automatically aligns fp16 and bf16 with available CUDA hardware."""
-        use_fp16, use_bf16, prec_str = detect_hardware_precision()
+        use_fp16, use_bf16, prec_str = detect_hardware_precision(
+            major=major, minor=minor, bf16_supported=bf16_supported
+        )
         self.fp16 = use_fp16
         self.bf16 = use_bf16
         return prec_str
