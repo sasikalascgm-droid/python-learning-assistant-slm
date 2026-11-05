@@ -66,7 +66,7 @@ def test_health_endpoint_handler(model_service):
     response = get_health(model_service)
     assert isinstance(response, HealthResponse)
     assert response.model_id == "Qwen/Qwen2.5-1.5B-Instruct"
-    assert response.revision == "c644d673f4439c36291a1827471fb3be52382e26"
+    assert response.revision == "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
     assert response.model_loaded is False
     assert response.adapter_exists is False
     assert response.cuda_available is False

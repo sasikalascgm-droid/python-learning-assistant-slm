@@ -277,7 +277,7 @@ with tab_about:
     st.subheader("About the Python Learning Assistant")
     st.markdown("""
     ### 🏗️ Technical Architecture
-    - **Base SLM:** `Qwen/Qwen2.5-1.5B-Instruct` (Pinned Revision: `c644d673f4439c36291a1827471fb3be52382e26`, Apache-2.0).
+    - **Base SLM:** `Qwen/Qwen2.5-1.5B-Instruct` (Pinned Revision: `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`, Apache-2.0).
     - **Base Parameters:** **1,543,714,304** parameters (derived with tied word embeddings and QKV biases).
     - **LoRA Adapter:** Rank $r=8$, $\alpha=16$ on all 7 projections (`q, k, v, o, gate, up, down_proj`) = **9,232,384** trainable parameters (**0.5981%**).
     - **4-bit Quantization:** NormalFloat4 (`nf4`) with double quantization via bitsandbytes.

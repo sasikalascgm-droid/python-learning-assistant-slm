@@ -127,7 +127,7 @@ def load_slm(
 
     config = load_config(config_path)
     model_id = config.get("model", {}).get("model_id", "Qwen/Qwen2.5-1.5B-Instruct")
-    model_revision = config.get("model", {}).get("revision", "c644d673f4439c36291a1827471fb3be52382e26")
+    model_revision = config.get("model", {}).get("revision", "989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
     target_device = "cpu" if force_cpu else config.get("hardware", {}).get("target_device", "auto")
 
     # If already loaded and matching configuration, return singleton

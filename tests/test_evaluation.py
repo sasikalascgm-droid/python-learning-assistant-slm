@@ -21,7 +21,7 @@ from src.model.lora_config import (
 
 def test_model_revision_pinning():
     """Verify base model is pinned to immutable git commit SHA."""
-    assert PINNED_QWEN_REVISION == "c644d673f4439c36291a1827471fb3be52382e26"
+    assert PINNED_QWEN_REVISION == "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
     assert len(PINNED_QWEN_REVISION) == 40
 
 
@@ -192,8 +192,14 @@ def test_baseline_notebook_step5_colab_resolution():
     with open(nb_path, "r", encoding="utf-8") as f:
         nb = json.load(f)
 
-    # Step 5 is code cell 5 (index 5)
-    step5_code = "".join(nb["cells"][5]["source"])
+    # Locate Step 5 code cell dynamically
+    step5_code = ""
+    for cell in nb["cells"]:
+        src = "".join(cell.get("source", []))
+        if "Step 5:" in src or "Execute Evaluation Across Held-Out Test Set" in src:
+            step5_code = src
+            break
+    assert step5_code != "", "Step 5 code cell must exist in notebook!"
 
     # 1. Candidate paths check
     assert "candidate_paths = [" in step5_code

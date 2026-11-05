@@ -20,7 +20,7 @@ cells = [
             "**Project:** Python Learning Assistant Using Small Language Model (SLM)  \n",
             "**Notebook:** `notebooks/phase5_lora_training.ipynb`  \n",
             "**Base Model:** `Qwen/Qwen2.5-1.5B-Instruct`  \n",
-            "**Pinned Revision:** `c644d673f4439c36291a1827471fb3be52382e26` (Apache-2.0)  \n",
+            "**Pinned Revision:** `989aa7980e4cf806f80c7fef2b1adb7bc71aa306` (Apache-2.0)  \n",
             "**Target Hardware:** Google Colab FREE Tier GPU (NVIDIA Tesla T4 or any available CUDA GPU). Zero paid APIs or subscriptions required.  \n",
             "**Output Artifacts:** `artifacts/lora_adapter/` (packaged as `lora_adapter.zip` for one-click download)  \n",
             "\n",
@@ -77,7 +77,7 @@ cells = [
             "        print(\"Or upload the 'data' directory directly to Colab.\")\n",
             "\n",
             "# Install verified open-source dependencies (quoted to prevent shell redirection errors from >=)\n",
-            "!pip install -q \"transformers>=4.41.0\" \"peft>=0.10.0\" \"accelerate>=0.28.0\" \"datasets>=2.18.0\" \"bitsandbytes>=0.43.0\" psutil pyyaml\n"
+            "!pip install -q \"transformers>=5.22.0\" \"huggingface-hub>=1.31.0,<2.0\" \"peft>=0.21.0\" \"accelerate>=1.15.0\" \"bitsandbytes>=0.43.0\" psutil pyyaml\n"
         ]
     },
     {
@@ -90,6 +90,7 @@ cells = [
             "import os\n",
             "import sys\n",
             "import psutil\n",
+            "import subprocess\n",
             "import torch\n",
             "import transformers\n",
             "import peft\n",
@@ -139,7 +140,8 @@ cells = [
             "\n",
             "print(f'USE_FP16: {USE_FP16}')\n",
             "print(f'USE_BF16: {USE_BF16}')\n",
-            "print(f'Selected Precision: {PRECISION_STR}')\n"
+            "print(f'Selected Precision: {PRECISION_STR}')\n",
+            "\n# Dependency conflict verification\ncheck_res = subprocess.run([sys.executable, '-m', 'pip', 'check'], capture_output=True, text=True)\nif check_res.returncode == 0:\n    print('Dependency Conflict Audit: PASSED (Zero conflicts detected)\\n')\nelse:\n    print(f'Dependency Conflict Notice:\\n{check_res.stdout.strip()}\\n')\n"
         ]
     },
     {
@@ -192,7 +194,7 @@ cells = [
             "from torch.utils.data import Dataset\n",
             "\n",
             "MODEL_ID = 'Qwen/Qwen2.5-1.5B-Instruct'\n",
-            "PINNED_REVISION = 'c644d673f4439c36291a1827471fb3be52382e26'\n",
+            "PINNED_REVISION = '989aa7980e4cf806f80c7fef2b1adb7bc71aa306'\n",
             "\n",
             "print(f'Loading tokenizer for {MODEL_ID} at revision {PINNED_REVISION}...')\n",
             "tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=PINNED_REVISION, trust_remote_code=False)\n",

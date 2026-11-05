@@ -35,7 +35,7 @@ QWEN2_1_5B_DIMS: Dict[str, int] = {
     "total_base_parameters": 1543714304,
 }
 
-PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"
+PINNED_QWEN_REVISION = "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
 
 
 def detect_hardware_precision(
