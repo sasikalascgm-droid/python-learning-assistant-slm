@@ -328,12 +328,24 @@ curl -X POST "http://127.0.0.1:8000/model/load" \
 
 ## 🧪 Testing & Verification
 
-Run the full automated Pytest suite (64 unit and integration tests across 7 modules, 100% passing in ~7.6s):
+Run the full automated Pytest suite (64 unique unit and integration tests across 7 test files, 100% passing in ~3.4s):
 
 ```bash
 # Run all unit tests
 pytest -v
 ```
+
+### Exact Test Breakdown by File (Sum = 64):
+- `tests/test_dataset.py`: 8 tests (data schema, non-empty, duplicates, 80:10:10 splits, AST code syntax)
+- `tests/test_evaluation.py`: 11 tests (pinned revision, exact parameter count 1,543,714,304, exact LoRA params 9,232,384, rubric)
+- `tests/test_inference.py`: 5 tests (ChatML formatting, memory headroom audit, cache resolution)
+- `tests/test_lora_config.py`: 12 tests (LoRA config, target modules, response loss masking, overfitting check)
+- `tests/test_optimization.py`: 9 tests (4-bit NF4 quantization configs, AST validator, container quarantine)
+- `tests/test_assistant_service.py`: 7 tests (6 pure unit + 1 mock-based test)
+- `tests/test_api.py`: 12 tests (6 schema/validation unit + 6 in-process route integration tests)
+- **Total Unique Tests:** **64 tests** (57 pure unit tests + 1 mock-based test + 6 route integration tests = 64 tests).
+
+*(Note: Live HTTP server tests [11 requests] and Streamlit browser flows are executed separately via `scripts/verify_server.py` and `scripts/verify_ui.py`.)*
 
 ---
 

@@ -114,31 +114,45 @@ Using `streamlit.testing.v1.AppTest`:
 ## 5. Non-Overlapping Test Suite Categorization & Pytest Results
 
 ### Pytest Collection & Execution Output:
-- **Command:** `python -m pytest --collect-only -q` -> **64 tests collected in 1.35s**
-- **Command:** `python -m pytest -v` -> **64 passed in 3.44s** (0 failed, 0 skipped)
+- **Collection Command:** `python -m pytest --collect-only -q` -> **64 unique tests collected in 1.44s**
+- **Execution Command:** `python -m pytest -v` -> **64 passed in 3.44s** (0 failed, 0 skipped)
 
-### Non-Overlapping Test Accounting:
-To prevent double-counting or treating overlapping tests as separate, the 64 unique tests are rigorously decomposed:
+### Exact Breakdown by Test File (Sum = Exactly 64 Tests):
 
-```
-Total Unique Pytest Tests: 64
-├── Pure Logic Unit Tests: 57 tests
-│   ├── test_dataset.py: 8 tests
-│   ├── test_evaluation.py: 11 tests
-│   ├── test_inference.py: 5 tests
-│   ├── test_lora_config.py: 12 tests
-│   ├── test_optimization.py: 9 tests
-│   ├── test_assistant_service.py (Unit part): 6 tests
-│   └── test_api.py (Schema/validation part): 6 tests
-├── Mock-Based Test (Inside test_assistant_service.py): 1 test
-│   └── test_assistant_service_mocked_model_loaded_inference (overlap: 1 of 7 in assistant service)
-└── API In-Process Route Tests (Inside test_api.py): 6 tests
-    └── Route execution tests for /, /health, /model/load, /ask, /explain-code, /practice (overlap: 6 of 12 in api)
+| Test File | Total Tests | Pure Unit Tests | Mock-Based Tests | In-Process Route Integration Tests |
+|---|---|---|---|---|
+| `tests/test_dataset.py` | **8** | 8 | 0 | 0 |
+| `tests/test_evaluation.py` | **11** | 11 | 0 | 0 |
+| `tests/test_inference.py` | **5** | 5 | 0 | 0 |
+| `tests/test_lora_config.py` | **12** | 12 | 0 | 0 |
+| `tests/test_optimization.py` | **9** | 9 | 0 | 0 |
+| `tests/test_assistant_service.py` | **7** | 6 | 1 | 0 |
+| `tests/test_api.py` | **12** | 6 | 0 | 6 |
+| **TOTAL** | **64** | **57** | **1** | **6** |
 
-Separate Standalone Verification (NOT part of the 64 pytest items):
-├── scripts/verify_server.py: 11 real HTTP network requests against running uvicorn
-└── scripts/verify_ui.py: Real Streamlit server health probe and AppTest flows
-```
+### Mathematical Reconciliations & Overlap Clarification:
+
+1. **Reconciliation by File (Adding Total Tests per File):**
+   $$8 + 11 + 5 + 12 + 9 + 7 + 12 = \mathbf{64}\text{ tests}$$
+2. **Reconciliation by Test Methodology (Adding Columns):**
+   $$57\text{ (Pure Unit)} + 1\text{ (Mock-Based)} + 6\text{ (Route Integration)} = \mathbf{64}\text{ tests}$$
+
+### Identification of Overlapping Sub-Categories:
+- **Mock-Based Test (1 test):**
+  - Exactly one test uses mocking: `tests/test_assistant_service.py::test_assistant_service_mocked_model_loaded_inference`.
+  - It is test #7 of the 7 tests in `test_assistant_service.py`. The other 6 tests in that file are pure unit tests for prompt formatting and AST code parsing.
+- **In-Process API Route Integration Tests (6 tests):**
+  - Exactly 6 tests in `tests/test_api.py` invoke route handler endpoints directly with requests:
+    1. `test_model_load_insufficient_memory_protection`
+    2. `test_ask_endpoint_valid_question`
+    3. `test_ask_endpoint_general_question`
+    4. `test_explain_code_valid_syntax`
+    5. `test_explain_code_syntax_error`
+    6. `test_practice_endpoint_valid_request`
+  - The other 6 tests in `tests/test_api.py` are pure Pydantic schema validation and OpenAPI registration unit tests (`test_fastapi_app_registration_and_openapi`, `test_root_endpoint_handler`, `test_health_endpoint_handler`, `test_ask_request_validation`, `test_explain_code_request_validation`, `test_practice_request_validation`).
+- **Separate Standalone Verification (NOT counted in the 64 pytest items):**
+  - `scripts/verify_server.py`: 11 real HTTP network requests against running uvicorn process (recorded in `reports/api_verification_results.json`).
+  - `scripts/verify_ui.py`: Real Streamlit server health probe & AppTest flows (recorded in `reports/ui_verification_results.json`).
 
 ---
 

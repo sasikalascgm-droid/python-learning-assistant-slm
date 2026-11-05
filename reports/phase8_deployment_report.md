@@ -312,9 +312,32 @@ curl -X POST "http://127.0.0.1:8000/explain-code" \
 The automated test suite has been expanded from 45 tests (Phase 7) to **64 tests** (Phase 8), testing every layer of the system.
 
 ### Test Execution Summary:
-- **Command:** `python -m pytest -v`
-- **Result:** **64 passed in 7.63s**
+- **Collection Command:** `python -m pytest --collect-only -q` -> **64 unique tests collected in 1.44s**
+- **Execution Command:** `python -m pytest -v` -> **64 passed in 3.44s** (0 failed, 0 skipped)
 - **Exit Code:** 0
+
+### Exact Breakdown by Test File (Sum = Exactly 64 Tests):
+
+| Test File | Total Tests | Pure Unit Tests | Mock-Based Tests | In-Process Route Integration Tests |
+|---|---|---|---|---|
+| `tests/test_dataset.py` | **8** | 8 | 0 | 0 |
+| `tests/test_evaluation.py` | **11** | 11 | 0 | 0 |
+| `tests/test_inference.py` | **5** | 5 | 0 | 0 |
+| `tests/test_lora_config.py` | **12** | 12 | 0 | 0 |
+| `tests/test_optimization.py` | **9** | 9 | 0 | 0 |
+| `tests/test_assistant_service.py` | **7** | 6 | 1 | 0 |
+| `tests/test_api.py` | **12** | 6 | 0 | 6 |
+| **TOTAL** | **64** | **57** | **1** | **6** |
+
+### Mathematical Reconciliations & Overlap Clarification:
+1. **Reconciliation by File (Adding Total Tests per File):**
+   $$8 + 11 + 5 + 12 + 9 + 7 + 12 = \mathbf{64}\text{ tests}$$
+2. **Reconciliation by Test Methodology (Adding Columns):**
+   $$57\text{ (Pure Unit)} + 1\text{ (Mock-Based)} + 6\text{ (Route Integration)} = \mathbf{64}\text{ tests}$$
+
+- **Mock-Based Test (1 test):** `test_assistant_service_mocked_model_loaded_inference` (test #7 in `test_assistant_service.py`).
+- **In-Process API Route Tests (6 tests):** Endpoint handler execution tests (tests #4, 5, 6, 8, 9, 11 in `test_api.py`).
+- **Standalone Live Verification (Outside pytest):** 11 real HTTP requests in `scripts/verify_server.py` and live Streamlit checks in `scripts/verify_ui.py`.
 
 ### Breakdown of Test Modules:
 1. `tests/test_dataset.py` (8 tests): Raw dataset loading, schema integrity, non-empty content, zero duplicates, split counts (306/38/38), zero cross-split leakage, AST syntax of code blocks, split reproducibility.
