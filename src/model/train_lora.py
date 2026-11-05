@@ -227,9 +227,9 @@ class QwenSFTDataset:
                 f"Check max_seq_length setting."
             )
             self.features.append({
-                "input_ids": torch.tensor(item["input_ids"], dtype=torch.long),
-                "attention_mask": torch.tensor(item["attention_mask"], dtype=torch.long),
-                "labels": torch.tensor(item["labels"], dtype=torch.long)
+                "input_ids": item["input_ids"],
+                "attention_mask": item["attention_mask"],
+                "labels": item["labels"]
             })
 
     def __len__(self) -> int:
@@ -358,6 +358,8 @@ def run_lora_training(
     )
     if cfg.gradient_checkpointing:
         base_model.gradient_checkpointing_enable()
+        base_model.enable_input_require_grads()
+        base_model.config.use_cache = False
 
     # Attach PEFT LoRA adapter
     peft_config = cfg.get_peft_config()

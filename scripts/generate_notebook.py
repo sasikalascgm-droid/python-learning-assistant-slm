@@ -1,6 +1,14 @@
-"""Script to generate reproducible Phase 5 & Phase 6 Google Colab Notebook."""
+"""
+Generates notebooks/phase5_lora_training.ipynb.
+Synchronized with verified Google Colab Free Tesla T4 configuration.
+"""
+
 import json
 from pathlib import Path
+
+null = None
+true = True
+false = False
 
 cells = [
     {
@@ -8,33 +16,73 @@ cells = [
         "metadata": {},
         "source": [
             "# Phase 5 & 6: LoRA Fine-Tuning and Model Optimization Pipeline\n",
+            "\n",
             "**Project:** Python Learning Assistant Using Small Language Model (SLM)  \n",
             "**Notebook:** `notebooks/phase5_lora_training.ipynb`  \n",
             "**Base Model:** `Qwen/Qwen2.5-1.5B-Instruct`  \n",
             "**Pinned Revision:** `c644d673f4439c36291a1827471fb3be52382e26` (Apache-2.0)  \n",
-            "**Target Hardware:** Google Colab GPU (NVIDIA Tesla T4 or Ampere GPU)  \n",
-            "**Output Artifacts:** `artifacts/lora_adapter/` & `experiments/optimization_results.json`  \n",
+            "**Target Hardware:** Google Colab FREE Tier GPU (NVIDIA Tesla T4 or any available CUDA GPU). Zero paid APIs or subscriptions required.  \n",
+            "**Output Artifacts:** `artifacts/lora_adapter/` (packaged as `lora_adapter.zip` for one-click download)  \n",
             "\n",
             "---\n",
-            "### Execution Instructions for Google Colab:\n",
-            "1. Ensure GPU runtime is selected: **Runtime -> Change runtime type -> T4 GPU**.\n",
-            "2. Run cells sequentially from top to bottom.\n",
-            "3. All results, loss logs, and trained weights will be saved directly to the repository directory."
+            "### Step-by-Step Instructions for Google Colab:\n",
+            "\n",
+            "1. **Select GPU Runtime:**\n",
+            "   - Navigate to: **Runtime -> Change runtime type**.\n",
+            "   - Set **Hardware accelerator** to **T4 GPU** (Standard Free tier).\n",
+            "\n",
+            "2. **Workspace & Dataset Setup (Choose ONE method):**\n",
+            "   - **Option A (Git Clone - Recommended):** Run in a code cell:\n",
+            "     ```bash\n",
+            "     !git clone https://github.com/sasikalascgm-droid/python-learning-assistant-slm.git\n",
+            "     %cd python-learning-assistant-slm\n",
+            "     ```\n",
+            "   - **Option B (Direct Folder Upload):** Upload the `data` folder from your local project into `/content/data`.\n",
+            "\n",
+            "3. **Automatic Precision Detection:**\n",
+            "   - The notebook automatically detects your GPU compute capability.\n",
+            "   - On Tesla T4 (Turing SM 7.5): Configures **FP16** mixed precision.\n",
+            "   - On Ampere/Hopper (SM >= 8.0, e.g. A100/L4): Configures **BF16** precision when supported.\n",
+            "   - If no GPU is attached, execution halts safely with a helpful diagnostic.\n",
+            "\n",
+            "4. **Execution & Download:**\n",
+            "   - Click **Runtime -> Run all**.\n",
+            "   - At the end of Step 7, all adapter weights (`adapter_model.safetensors`, `adapter_config.json`, training loss logs) are packaged into `lora_adapter.zip` and automatically prompted for download to your computer.\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
-            "# Step 1: Install Compatible Fine-Tuning & Quantization Dependencies\n",
-            "!pip install -q transformers>=4.40.0 peft>=0.10.0 accelerate>=0.28.0 datasets>=2.18.0 bitsandbytes>=0.43.0 psutil pyyaml\n"
+            "# Step 1: Environment Setup, Working Directory & Dependency Installation\n",
+            "import os\n",
+            "import sys\n",
+            "from pathlib import Path\n",
+            "\n",
+            "# Check if running in Google Colab\n",
+            "IN_COLAB = 'google.colab' in sys.modules or os.path.exists('/content')\n",
+            "\n",
+            "if IN_COLAB:\n",
+            "    # If cloned repository directory exists, cd into it\n",
+            "    for repo_candidate in ['/content/python-learning-assistant-slm', '/content/slm-python-learning-assistant']:\n",
+            "        if (Path(repo_candidate) / 'data/processed/train.jsonl').exists():\n",
+            "            os.chdir(repo_candidate)\n",
+            "            print(f'Switched working directory to: {repo_candidate}')\n",
+            "            break\n",
+            "    if not Path('data/processed/train.jsonl').exists():\n",
+            "        print(\"\u26a0\ufe0f Notice: 'data/processed/train.jsonl' not found in current directory.\")\n",
+            "        print(\"Please run: !git clone https://github.com/sasikalascgm-droid/python-learning-assistant-slm.git && %cd python-learning-assistant-slm\")\n",
+            "        print(\"Or upload the 'data' directory directly to Colab.\")\n",
+            "\n",
+            "# Install verified open-source dependencies (quoted to prevent shell redirection errors from >=)\n",
+            "!pip install -q \"transformers>=4.41.0\" \"peft>=0.10.0\" \"accelerate>=0.28.0\" \"datasets>=2.18.0\" \"bitsandbytes>=0.43.0\" psutil pyyaml\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -59,16 +107,18 @@ cells = [
             "print(f'bitsandbytes Version : {bnb_ver}')\n",
             "\n",
             "if not torch.cuda.is_available():\n",
-            "    raise SystemError('FATAL: No CUDA GPU detected. Please enable GPU in Colab (Runtime -> Change runtime type -> T4 GPU).')\n",
+            "    raise SystemError('FATAL: No CUDA GPU detected. LoRA fine-tuning cannot run on host CPU. Please select a GPU runtime in Colab (Runtime -> Change runtime type -> T4 GPU). Status remains PENDING_COLAB_EXECUTION.')\n",
             "\n",
             "gpu_name = torch.cuda.get_device_name(0)\n",
+            "major, minor = torch.cuda.get_device_capability(0)\n",
             "vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)\n",
             "cuda_ver = torch.version.cuda\n",
             "ram_gb = psutil.virtual_memory().total / (1024**3)\n",
             "avail_ram = psutil.virtual_memory().available / (1024**3)\n",
             "\n",
             "print(f'\\n=== GPU Hardware Profile ===')\n",
-            "print(f'GPU Model            : {gpu_name}')\n",
+            "print(f'GPU: {gpu_name}')\n",
+            "print(f'GPU capability: ({major}, {minor})')\n",
             "print(f'Total GPU VRAM       : {vram_gb:.2f} GB')\n",
             "print(f'CUDA Toolkit         : {cuda_ver}')\n",
             "print(f'Host System RAM      : {ram_gb:.2f} GB ({avail_ram:.2f} GB free)')\n",
@@ -94,7 +144,7 @@ cells = [
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -112,26 +162,32 @@ cells = [
             "with open(VAL_PATH, 'r', encoding='utf-8') as f:\n",
             "    val_data = [json.loads(line) for line in f if line.strip()]\n",
             "\n",
-            "# Strict Isolation Assertion: Ensure test set is NEVER contaminated\n",
+            "# Strict Isolation Assertion: Ensure test set is NEVER contaminated into training or tuning\n",
             "if TEST_PATH.exists():\n",
             "    with open(TEST_PATH, 'r', encoding='utf-8') as f:\n",
             "        test_instructions = set(json.loads(line)['instruction'].strip() for line in f if line.strip())\n",
             "    train_instructions = set(r['instruction'].strip() for r in train_data)\n",
             "    overlap = train_instructions & test_instructions\n",
             "    assert len(overlap) == 0, f'FATAL: Test set contamination detected! Leaked: {overlap}'\n",
+            "    assert len(test_instructions) == 38, f'Expected 38 test examples, found {len(test_instructions)}'\n",
+            "\n",
+            "# Verify exact dataset split counts\n",
+            "assert len(train_data) == 306, f'Expected 306 train examples, found {len(train_data)}'\n",
+            "assert len(val_data) == 38, f'Expected 38 validation examples, found {len(val_data)}'\n",
             "\n",
             "print(f'Training Examples    : {len(train_data)}')\n",
             "print(f'Validation Examples  : {len(val_data)}')\n",
-            "print(f'Test Set Isolation   : VERIFIED (0 overlapping instructions)')\n"
+            "print(f'Test Set Isolation   : VERIFIED (0 overlapping instructions, strictly quarantined)')\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
             "# Step 4: Tokenizer Initialization & ChatML Formatting with Response-Only Loss Masking\n",
+            "import torch\n",
             "from transformers import AutoTokenizer\n",
             "from torch.utils.data import Dataset\n",
             "\n",
@@ -176,10 +232,15 @@ cells = [
             "            labels = [-100] * p_len + full_ids[p_len:]\n",
             "            mask = [1] * len(full_ids)\n",
             "            \n",
+            "            # Pre-training audit guard: Ensure example has at least one trainable response token\n",
+            "            trainable_tokens = sum(1 for lbl in labels if lbl != -100)\n",
+            "            assert trainable_tokens > 0, f\"FATAL: Example '{r['instruction'][:35]}' has 0 trainable tokens after truncation!\"\n",
+            "            \n",
+            "            # Store native Python lists to ensure clean DataCollatorForSeq2Seq padding and prevent NumPy 2.x tensor concatenation errors\n",
             "            self.features.append({\n",
-            "                'input_ids': torch.tensor(full_ids, dtype=torch.long),\n",
-            "                'attention_mask': torch.tensor(mask, dtype=torch.long),\n",
-            "                'labels': torch.tensor(labels, dtype=torch.long)\n",
+            "                'input_ids': full_ids,\n",
+            "                'attention_mask': mask,\n",
+            "                'labels': labels\n",
             "            })\n",
             "            \n",
             "    def __len__(self):\n",
@@ -195,7 +256,7 @@ cells = [
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -211,6 +272,8 @@ cells = [
             "    low_cpu_mem_usage=True\n",
             ")\n",
             "base_model.gradient_checkpointing_enable()\n",
+            "base_model.enable_input_require_grads()\n",
+            "base_model.config.use_cache = False\n",
             "\n",
             "# Theoretical parameter breakdown for Qwen2.5-1.5B (hidden_size=1536, intermediate=8960, 28 layers)\n",
             "target_modules = ['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj']\n",
@@ -245,7 +308,7 @@ cells = [
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -296,12 +359,15 @@ cells = [
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
-            "# Step 7: Record Training Loss & Export Artifacts\n",
+            "# Step 7: Record Training Loss, Export Artifacts & Package Download ZIP\n",
             "import math\n",
+            "import json\n",
+            "import shutil\n",
+            "from pathlib import Path\n",
             "\n",
             "eval_metrics = trainer.evaluate()\n",
             "val_loss = eval_metrics.get('eval_loss', 0.0)\n",
@@ -312,17 +378,24 @@ cells = [
             "print(f'Final Validation Loss : {val_loss:.4f}')\n",
             "print(f'Validation Perplexity : {val_ppl:.2f}')\n",
             "\n",
-            "# Save LoRA Adapter & Tokenizer\n",
+            "# Save LoRA Adapter & Tokenizer files\n",
             "lora_model.save_pretrained(OUTPUT_DIR)\n",
             "tokenizer.save_pretrained(OUTPUT_DIR)\n",
             "\n",
-            "# Save training metadata summary\n",
+            "# Save full epoch-by-epoch trainer log history\n",
+            "log_history_path = Path(OUTPUT_DIR) / 'trainer_log_history.json'\n",
+            "with open(log_history_path, 'w', encoding='utf-8') as f:\n",
+            "    json.dump(trainer.state.log_history, f, indent=2)\n",
+            "\n",
+            "# Save comprehensive training metadata summary\n",
             "summary_data = {\n",
             "    'model_id': MODEL_ID,\n",
             "    'model_revision': PINNED_REVISION,\n",
             "    'gpu_model': gpu_name,\n",
             "    'precision': PRECISION_STR,\n",
             "    'trainable_parameters': actual_trainable,\n",
+            "    'total_parameters': actual_total,\n",
+            "    'trainable_percentage': round(actual_pct, 4),\n",
             "    'train_loss': round(train_loss, 4),\n",
             "    'val_loss': round(val_loss, 4),\n",
             "    'val_perplexity': round(val_ppl, 2),\n",
@@ -332,17 +405,49 @@ cells = [
             "with open(Path(OUTPUT_DIR) / 'training_summary.json', 'w', encoding='utf-8') as f:\n",
             "    json.dump(summary_data, f, indent=2)\n",
             "\n",
-            "print(f'Saved LoRA adapter and summary to {OUTPUT_DIR}/')\n"
+            "print(f'Saved LoRA adapter, tokenizer, and summary to {OUTPUT_DIR}/')\n",
+            "\n",
+            "# Package generated adapter into a clean ZIP archive for download\n",
+            "zip_name = 'lora_adapter'\n",
+            "zip_path = shutil.make_archive(zip_name, 'zip', OUTPUT_DIR)\n",
+            "zip_size_mb = Path(zip_path).stat().st_size / (1024**2)\n",
+            "print(f'\\nSuccessfully packaged adapter into: {zip_path} ({zip_size_mb:.2f} MB)')\n",
+            "print('Contents of ZIP package:')\n",
+            "for p in sorted(Path(OUTPUT_DIR).glob('*')):\n",
+            "    print(f'  - {p.name} ({p.stat().st_size / 1024:.1f} KB)')\n",
+            "\n",
+            "# Trigger browser download if executing in Google Colab\n",
+            "try:\n",
+            "    from google.colab import files\n",
+            "    print('\\nPrompting browser download of lora_adapter.zip in Colab...')\n",
+            "    files.download(zip_path)\n",
+            "except (ImportError, Exception):\n",
+            "    print(f'\\nDownload archive is ready at: {Path(zip_path).resolve()}')\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
             "# Step 8: Reload Adapter and Verify Standalone Inference\n",
+            "import gc\n",
+            "import torch\n",
             "from peft import PeftModel\n",
+            "from transformers import AutoModelForCausalLM\n",
+            "\n",
+            "# Clean up training objects to free GPU VRAM before inference & benchmarks\n",
+            "print('Cleaning up training objects from VRAM...')\n",
+            "try:\n",
+            "    del trainer\n",
+            "    del lora_model\n",
+            "    del base_model\n",
+            "except NameError:\n",
+            "    pass\n",
+            "gc.collect()\n",
+            "if torch.cuda.is_available():\n",
+            "    torch.cuda.empty_cache()\n",
             "\n",
             "print(f'Reloading saved LoRA adapter from {OUTPUT_DIR}...')\n",
             "reloaded_base = AutoModelForCausalLM.from_pretrained(\n",
@@ -351,6 +456,7 @@ cells = [
             "    torch_dtype=TRAIN_DTYPE,\n",
             "    device_map='auto'\n",
             ")\n",
+            "reloaded_base.config.use_cache = True\n",
             "reloaded_model = PeftModel.from_pretrained(reloaded_base, OUTPUT_DIR)\n",
             "reloaded_model.eval()\n",
             "print('LoRA adapter reloaded successfully!')\n",
@@ -371,16 +477,16 @@ cells = [
             "---\n",
             "# Phase 6: Model Optimization & Controlled 3-Way Benchmark\n",
             "We compare three configurations on the validation split:\n",
-            "1. **Configuration A:** Base Qwen2.5-1.5B (FP16)\n",
-            "2. **Configuration B:** Fine-Tuned LoRA (FP16)\n",
+            "1. **Configuration A:** Base Qwen2.5-1.5B (Unadapted, FP16/BF16 based on hardware)\n",
+            "2. **Configuration B:** Fine-Tuned LoRA (FP16/BF16 based on hardware)\n",
             "3. **Configuration C:** Fine-Tuned LoRA (4-bit NF4 Quantized)\n",
             "\n",
-            "We measure loading time, first-request latency, warm latency, aggregate throughput, peak VRAM, and AST syntax pass rate."
+            "We measure loading time, first-request latency, warm latency, aggregate throughput, peak VRAM, and AST syntax pass rate.\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -410,19 +516,25 @@ cells = [
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
             "# Step 10: Controlled 3-Way Benchmark Execution on Validation Split\n",
             "import ast\n",
+            "import time\n",
+            "import re\n",
+            "import gc\n",
             "\n",
             "eval_queries = val_data[:10]  # Representative validation subset\n",
             "benchmark_results = {}\n",
             "\n",
             "def run_eval_for_model(model_obj, name, precision_label, quant_label):\n",
             "    print(f'\\nEvaluating: {name}...')\n",
-            "    torch.cuda.reset_peak_memory_stats()\n",
+            "    gc.collect()\n",
+            "    if torch.cuda.is_available():\n",
+            "        torch.cuda.empty_cache()\n",
+            "        torch.cuda.reset_peak_memory_stats()\n",
             "    latencies = []\n",
             "    tokens_list = []\n",
             "    ast_valid_count = 0\n",
@@ -434,11 +546,13 @@ cells = [
             "        prompt = f'<|im_start|>system\\n{SYSTEM_PROMPT.strip()}<|im_end|>\\n<|im_start|>user\\n{user_text}<|im_end|>\\n<|im_start|>assistant\\n'\n",
             "        inp = tokenizer(prompt, return_tensors='pt').to(model_obj.device)\n",
             "        \n",
-            "        torch.cuda.synchronize()\n",
+            "        if torch.cuda.is_available():\n",
+            "            torch.cuda.synchronize()\n",
             "        t0 = time.time()\n",
             "        with torch.no_grad():\n",
             "            out = model_obj.generate(**inp, max_new_tokens=256, temperature=0.7, top_p=0.9, repetition_penalty=1.1, do_sample=True)\n",
-            "        torch.cuda.synchronize()\n",
+            "        if torch.cuda.is_available():\n",
+            "            torch.cuda.synchronize()\n",
             "        dt = time.time() - t0\n",
             "        \n",
             "        gen_ids = out[0][inp['input_ids'].shape[1]:]\n",
@@ -448,7 +562,6 @@ cells = [
             "        \n",
             "        # AST verification on generated code\n",
             "        gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True)\n",
-            "        import re\n",
             "        code_blocks = re.findall(r'```(?:python)?\\s*\\n(.*?)```', gen_text, flags=re.DOTALL)\n",
             "        is_valid = True\n",
             "        for cb in code_blocks:\n",
@@ -462,7 +575,7 @@ cells = [
             "            \n",
             "    tot_tokens = sum(tokens_list)\n",
             "    tot_lat = sum(latencies)\n",
-            "    peak_vram = torch.cuda.max_memory_allocated() / (1024**2)\n",
+            "    peak_vram = (torch.cuda.max_memory_allocated() / (1024**2)) if torch.cuda.is_available() else 0.0\n",
             "    \n",
             "    return {\n",
             "        'config_name': name,\n",
@@ -474,18 +587,24 @@ cells = [
             "        'total_tokens': tot_tokens,\n",
             "        'aggregate_throughput_tok_per_sec': round(tot_tokens / tot_lat, 2),\n",
             "        'peak_memory_mb': round(peak_vram, 2),\n",
-            "        'ast_syntax_pass_pct': round((ast_valid_count / len(eval_queries)) * 100.0, 1)\n",
+            "        'ast_syntax_pass_pct': round((ast_valid_count / len(eval_queries)) * 100.0, 1),\n",
+            "        'status': 'MEASURED_LIVE_COLAB_GPU'\n",
             "    }\n",
             "\n",
-            "# Evaluate configurations\n",
-            "benchmark_results['base_fp16'] = run_eval_for_model(reloaded_base, 'Base Qwen2.5-1.5B (FP16)', 'float16', 'none')\n",
-            "benchmark_results['lora_fp16'] = run_eval_for_model(reloaded_model, 'LoRA-Adapted Qwen2.5-1.5B (FP16)', 'float16', 'none')\n",
-            "benchmark_results['lora_int4'] = run_eval_for_model(quant_lora_model, 'LoRA-Adapted Qwen2.5-1.5B (4-bit NF4)', 'float16-compute', 'bitsandbytes-nf4')\n"
+            "# Evaluate configurations dynamically reflecting selected hardware precision\n",
+            "prec_tag = 'bf16' if USE_BF16 else 'fp16'\n",
+            "prec_label = 'bfloat16' if USE_BF16 else 'float16'\n",
+            "compute_dtype_label = 'bfloat16-compute' if USE_BF16 else 'float16-compute'\n",
+            "\n",
+            "with reloaded_model.disable_adapter():\n",
+            "    benchmark_results[f'base_{prec_tag}'] = run_eval_for_model(reloaded_model, f'Base Qwen2.5-1.5B ({prec_tag.upper()})', prec_label, 'none')\n",
+            "benchmark_results[f'lora_{prec_tag}'] = run_eval_for_model(reloaded_model, f'LoRA-Adapted Qwen2.5-1.5B ({prec_tag.upper()})', prec_label, 'none')\n",
+            "benchmark_results['lora_int4'] = run_eval_for_model(quant_lora_model, 'LoRA-Adapted Qwen2.5-1.5B (4-bit NF4)', compute_dtype_label, 'bitsandbytes-nf4')\n"
         ]
     },
     {
         "cell_type": "code",
-        "execution_count": None,
+        "execution_count": null,
         "metadata": {},
         "outputs": [],
         "source": [
@@ -508,18 +627,18 @@ cells = [
 nb_dict = {
     "cells": cells,
     "metadata": {
-        "accelerator": "GPU",
-        "colab": {
-            "provenance": []
-        },
-        "kernelspec": {
-            "display_name": "Python 3",
-            "name": "python3"
-        },
-        "language_info": {
-            "name": "python"
-        }
+    "accelerator": "GPU",
+    "colab": {
+        "provenance": []
     },
+    "kernelspec": {
+        "display_name": "Python 3",
+        "name": "python3"
+    },
+    "language_info": {
+        "name": "python"
+    }
+},
     "nbformat": 4,
     "nbformat_minor": 2
 }

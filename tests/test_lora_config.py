@@ -367,3 +367,67 @@ def test_notebook_level_precision_validation():
     assert sim_str == "float16"
 
 
+def test_training_arguments_eval_strategy_compatibility():
+    """
+    Verify TrainingArguments uses eval_strategy (compatible with Transformers 4.41+ and 5.x)
+    and that deprecated evaluation_strategy is completely purged.
+    """
+    import json
+    from pathlib import Path
+
+    nb_path = Path("notebooks/phase5_lora_training.ipynb")
+    with open(nb_path, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    cell_6_code = "".join(nb["cells"][6]["source"])
+    assert "eval_strategy=" in cell_6_code, "Cell 6 TrainingArguments must use eval_strategy!"
+    assert "evaluation_strategy=" not in cell_6_code, "Cell 6 must not use deprecated evaluation_strategy!"
+
+    # Verify matching evaluation and save strategies
+    assert "eval_strategy='epoch'" in cell_6_code or 'eval_strategy="epoch"' in cell_6_code
+    assert "save_strategy='epoch'" in cell_6_code or 'save_strategy="epoch"' in cell_6_code
+
+
+def test_colab_modern_stack_compatibility():
+    """
+    Verify modern Colab environment compatibility:
+    1. SFTDataset produces Python lists for clean DataCollatorForSeq2Seq padding and NumPy 2.x safety.
+    2. Gradient checkpointing configures input require grads and disables KV caching during training.
+    3. Reloaded model for inference re-enables use_cache.
+    4. Base model benchmark cleanly disables LoRA adapter.
+    """
+    import json
+    from pathlib import Path
+
+    nb_path = Path("notebooks/phase5_lora_training.ipynb")
+    with open(nb_path, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    # 1. Dataset collation format
+    cell_4_code = "".join(nb["cells"][4]["source"])
+    assert "'input_ids': full_ids" in cell_4_code, "SFTDataset must store list full_ids!"
+    assert "'labels': labels" in cell_4_code, "SFTDataset must store list labels!"
+
+    # 2. Gradient checkpointing require grads
+    cell_5_code = "".join(nb["cells"][5]["source"])
+    assert "base_model.enable_input_require_grads()" in cell_5_code, (
+        "Cell 5 must call enable_input_require_grads() for PEFT LoRA gradient checkpointing!"
+    )
+    assert "base_model.config.use_cache = False" in cell_5_code, (
+        "Cell 5 must disable use_cache during training with gradient checkpointing!"
+    )
+
+    # 3. Reloaded inference use_cache
+    cell_8_code = "".join(nb["cells"][8]["source"])
+    assert "reloaded_base.config.use_cache = True" in cell_8_code, (
+        "Cell 8 must ensure use_cache=True for fast generation during inference!"
+    )
+
+    # 4. Base model benchmark adapter disabling
+    cell_11_code = "".join(nb["cells"][11]["source"])
+    assert "with reloaded_model.disable_adapter():" in cell_11_code, (
+        "Cell 11 must benchmark unadapted base model using disable_adapter() context manager!"
+    )
+
+
+
