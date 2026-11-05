@@ -166,3 +166,49 @@ def test_export_phase7_results_json_and_csv(tmp_path):
     csv_file = tmp_path / "test_out.csv"
     exported_csv = export_phase7_results_csv(summary_rows, str(csv_file))
     assert exported_csv.exists()
+
+
+def test_resolve_test_dataset_path_multi_candidate():
+    """Verify resolve_test_dataset_path discovers test.jsonl across both primary and alternate paths."""
+    from src.evaluation.evaluate import resolve_test_dataset_path
+
+    # Primary processed location
+    resolved_primary = resolve_test_dataset_path("data/processed/test.jsonl")
+    assert resolved_primary.exists()
+    assert resolved_primary.name == "test.jsonl"
+
+    # Root data fallback
+    resolved_root = resolve_test_dataset_path("data/test.jsonl")
+    assert resolved_root.exists()
+    assert resolved_root.name == "test.jsonl"
+
+
+def test_baseline_notebook_step5_colab_resolution():
+    """Verify notebooks/baseline_evaluation.ipynb Step 5 contains resilient multi-tier loading logic."""
+    import json
+
+    nb_path = Path("notebooks/baseline_evaluation.ipynb")
+    assert nb_path.exists(), "baseline_evaluation.ipynb must exist!"
+    with open(nb_path, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    # Step 5 is code cell 5 (index 5)
+    step5_code = "".join(nb["cells"][5]["source"])
+
+    # 1. Candidate paths check
+    assert "candidate_paths = [" in step5_code
+    assert "'data/processed/test.jsonl'" in step5_code
+    assert "'data/test.jsonl'" in step5_code
+    assert "python-learning-assistant-slm" in step5_code
+
+    # 2. Strict 38-sample assertion
+    assert "assert len(test_cases) == 38" in step5_code
+
+    # 3. Mandatory inference output fields
+    assert "'ground_truth': gt" in step5_code
+    assert "'model_response': out['response']" in step5_code
+    assert "'latency_seconds': out['latency_seconds']" in step5_code
+    assert "'input_tokens': out['input_tokens']" in step5_code
+    assert "'output_tokens': out['output_tokens']" in step5_code
+    assert "'tokens_per_second': out['tokens_per_second']" in step5_code
+

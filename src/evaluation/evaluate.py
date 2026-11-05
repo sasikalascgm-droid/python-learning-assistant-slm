@@ -169,14 +169,34 @@ def compute_performance_statistics(latencies: List[float], tokens: List[int]) ->
     }
 
 
+def resolve_test_dataset_path(preferred_path: str = "data/processed/test.jsonl") -> Path:
+    """
+    Robust multi-location path resolver for the held-out test dataset.
+    Searches standard processed location, root data directory, PROJECT_ROOT,
+    and Google Colab default working paths (/content/...).
+    """
+    candidates = [
+        Path(preferred_path),
+        PROJECT_ROOT / preferred_path,
+        Path("data/test.jsonl"),
+        PROJECT_ROOT / "data/test.jsonl",
+        Path("/content/python-learning-assistant-slm/data/processed/test.jsonl"),
+        Path("/content/python-learning-assistant-slm/data/test.jsonl"),
+        Path("/content/slm-python-learning-assistant/data/processed/test.jsonl"),
+        Path("/content/slm-python-learning-assistant/data/test.jsonl"),
+    ]
+    for c in candidates:
+        if c.exists() and c.is_file():
+            return c.resolve()
+
+    raise FileNotFoundError(
+        f"Held-out test dataset not found at '{preferred_path}'. Searched paths: {[str(p) for p in candidates]}"
+    )
+
+
 def load_test_dataset(test_path: str = "data/processed/test.jsonl") -> List[Dict[str, Any]]:
     """Loads held-out test split (strictly 38 records) with validation."""
-    path = Path(test_path)
-    if not path.exists():
-        path = PROJECT_ROOT / test_path
-    if not path.exists():
-        raise FileNotFoundError(f"Test dataset not found at '{test_path}'")
-
+    path = resolve_test_dataset_path(test_path)
     records = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
