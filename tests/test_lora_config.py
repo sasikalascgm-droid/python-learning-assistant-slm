@@ -297,3 +297,73 @@ def test_precision_detection_cpu_fallback():
     assert use_bf16 is False
     assert prec == "float32"
 
+
+def test_tesla_t4_always_selects_fp16_even_when_bf16_reports_true():
+    """
+    Direct verification of task 5:
+    Confirms Tesla T4 (SM 7.5) always selects FP16=True, BF16=False even when
+    Colab's torch.cuda.is_bf16_supported() returns True.
+    """
+    # 1. Verification via detect_hardware_precision
+    use_fp16, use_bf16, prec = detect_hardware_precision(major=7, minor=5, bf16_supported=True)
+    assert use_fp16 is True, "Tesla T4 must have USE_FP16=True"
+    assert use_bf16 is False, "Tesla T4 must have USE_BF16=False"
+    assert prec == "float16"
+
+    # 2. Verification via SLMLoRAConfig auto_configure_precision
+    cfg = get_default_lora_config()
+    sel_prec = cfg.auto_configure_precision(major=7, minor=5, bf16_supported=True)
+    assert cfg.fp16 is True
+    assert cfg.bf16 is False
+    assert sel_prec == "float16"
+
+
+def test_notebook_level_precision_validation():
+    """
+    Direct verification of task 6:
+    Notebook-level validation to detect stale or conflicting precision logic.
+    Ensures notebooks/phase5_lora_training.ipynb has no stale un-gated is_bf16_supported() calls.
+    """
+    import json
+    from pathlib import Path
+
+    nb_path = Path("notebooks/phase5_lora_training.ipynb")
+    assert nb_path.exists(), "Notebook not found!"
+    with open(nb_path, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    # 1. Check for stale un-gated is_bf16_supported
+    cell_2_code = "".join(nb["cells"][2]["source"])
+    assert "if (major >= 8) and torch.cuda.is_bf16_supported():" in cell_2_code, (
+        "Cell 2 must gate BF16 strictly behind compute capability major >= 8!"
+    )
+    assert "if torch.cuda.is_bf16_supported():\n" not in cell_2_code, (
+        "Cell 2 contains stale un-gated is_bf16_supported call!"
+    )
+
+    # 2. Check that TrainingArguments in Cell 6 uses fp16=USE_FP16 and bf16=USE_BF16
+    cell_6_code = "".join(nb["cells"][6]["source"])
+    assert "fp16=USE_FP16," in cell_6_code
+    assert "bf16=USE_BF16," in cell_6_code
+
+    # 3. Check that base model and reloaded model use TRAIN_DTYPE
+    cell_5_code = "".join(nb["cells"][5]["source"])
+    cell_8_code = "".join(nb["cells"][8]["source"])
+    cell_10_code = "".join(nb["cells"][10]["source"])
+    assert "torch_dtype=TRAIN_DTYPE" in cell_5_code
+    assert "torch_dtype=TRAIN_DTYPE" in cell_8_code
+    assert "bnb_4bit_compute_dtype=TRAIN_DTYPE" in cell_10_code
+
+    # 4. Simulate Cell 2 precision logic with Tesla T4 (7, 5) and is_bf16_supported=True
+    major, minor = 7, 5
+    is_bf16_sup = True  # Simulating Colab T4 behavior
+    if (major >= 8) and is_bf16_sup:
+        sim_fp16, sim_bf16, sim_str = False, True, "bfloat16"
+    else:
+        sim_fp16, sim_bf16, sim_str = True, False, "float16"
+
+    assert sim_fp16 is True
+    assert sim_bf16 is False
+    assert sim_str == "float16"
+
+

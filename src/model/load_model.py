@@ -102,8 +102,11 @@ def get_optimal_device(force_cpu: bool = False) -> Tuple[str, Any]:
         if torch.cuda.is_available():
             device_name = torch.cuda.get_device_name(0)
             total_vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-            print(f"CUDA GPU detected: {device_name} with {total_vram_gb:.2f} GB VRAM")
-            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            major, _ = torch.cuda.get_device_capability(0)
+            print(f"CUDA GPU detected: {device_name} (SM {major}) with {total_vram_gb:.2f} GB VRAM")
+            # Authoritative precision: SM 8.0+ and BF16 supported -> BF16; otherwise FP16
+            use_bf16 = (major >= 8) and torch.cuda.is_bf16_supported()
+            dtype = torch.bfloat16 if use_bf16 else torch.float16
             return "cuda", dtype
         else:
             return "cpu", torch.float32

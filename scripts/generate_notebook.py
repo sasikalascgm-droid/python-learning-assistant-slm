@@ -73,19 +73,23 @@ cells = [
             "print(f'CUDA Toolkit         : {cuda_ver}')\n",
             "print(f'Host System RAM      : {ram_gb:.2f} GB ({avail_ram:.2f} GB free)')\n",
             "\n",
-            "# Precision selection: Tesla T4 (Turing SM 7.5) natively uses FP16; Ampere+ uses BF16\n",
-            "if torch.cuda.is_bf16_supported():\n",
+            "# Precision selection based on GPU compute capability:\n",
+            "# - SM 8.0 or higher AND BF16 supported: use BF16.\n",
+            "# - Below SM 8.0 (e.g. Tesla T4 SM 7.5): use FP16.\n",
+            "if (major >= 8) and torch.cuda.is_bf16_supported():\n",
             "    TRAIN_DTYPE = torch.bfloat16\n",
             "    USE_FP16 = False\n",
             "    USE_BF16 = True\n",
-            "    PRECISION_STR = 'bfloat16 (Ampere / Hopper GPU)'\n",
+            "    PRECISION_STR = 'bfloat16'\n",
             "else:\n",
             "    TRAIN_DTYPE = torch.float16\n",
             "    USE_FP16 = True\n",
             "    USE_BF16 = False\n",
-            "    PRECISION_STR = 'float16 (Tesla T4 SM 7.5 GPU)'\n",
+            "    PRECISION_STR = 'float16'\n",
             "\n",
-            "print(f'Selected Precision   : {PRECISION_STR}')\n"
+            "print(f'USE_FP16: {USE_FP16}')\n",
+            "print(f'USE_BF16: {USE_BF16}')\n",
+            "print(f'Selected Precision: {PRECISION_STR}')\n"
         ]
     },
     {
