@@ -40,16 +40,18 @@ PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"
 
 def detect_hardware_precision() -> Tuple[bool, bool, str]:
     """
-    Detects whether CUDA hardware natively supports BF16 or FP16.
+    Detects whether CUDA hardware natively supports BF16 or FP16 based on GPU compute capability.
     Returns:
         (use_fp16, use_bf16, precision_display_str)
     """
     try:
         import torch
         if torch.cuda.is_available():
-            if torch.cuda.is_bf16_supported():
-                return False, True, "bfloat16 (Ampere / Hopper GPU)"
-            return True, False, "float16 (Tesla T4 SM 7.5 GPU)"
+            major, minor = torch.cuda.get_device_capability(0)
+            compute_cap = major + minor / 10.0
+            if compute_cap >= 8.0 and torch.cuda.is_bf16_supported():
+                return False, True, f"bfloat16 (SM {major}.{minor} Ampere/Hopper GPU)"
+            return True, False, f"float16 (SM {major}.{minor} Tesla T4/Turing GPU)"
     except Exception:
         pass
     return False, False, "float32 (CPU Fallback)"
