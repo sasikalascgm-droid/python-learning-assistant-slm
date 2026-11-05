@@ -168,11 +168,15 @@ def tokenize_with_prompt_masking(
         attention_mask = attention_mask + [0] * pad_len
         labels = labels + [-100] * pad_len
 
+    trainable_token_count = sum(1 for lbl in labels if lbl != -100)
+
     return {
         "input_ids": full_ids,
         "attention_mask": attention_mask,
         "labels": labels,
-        "truncated": truncated
+        "truncated": truncated,
+        "trainable_token_count": trainable_token_count,
+        "has_trainable_tokens": trainable_token_count > 0
     }
 
 
@@ -218,6 +222,10 @@ class QwenSFTDataset:
                 system_prompt=system_prompt
             )
             item = tokenize_with_prompt_masking(prompt_str, response_str, tokenizer, max_length=max_len)
+            assert item["has_trainable_tokens"], (
+                f"FATAL: Example '{r['instruction'][:40]}' has 0 trainable response tokens after truncation! "
+                f"Check max_seq_length setting."
+            )
             self.features.append({
                 "input_ids": torch.tensor(item["input_ids"], dtype=torch.long),
                 "attention_mask": torch.tensor(item["attention_mask"], dtype=torch.long),

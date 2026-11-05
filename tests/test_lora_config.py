@@ -223,7 +223,7 @@ def test_test_set_leak_assertion_triggers(tmp_path):
 
 
 def test_truncation_detection():
-    """Verify truncation is cleanly detected when sequence exceeds max_length."""
+    """Verify truncation is cleanly detected when sequence exceeds max_length and trainable tokens are tracked."""
     prompt_str = "A " * 50
     response_str = "B " * 50
     tokenizer = DummyTokenizer()
@@ -233,6 +233,16 @@ def test_truncation_detection():
     )
     assert features["truncated"] is True
     assert len(features["input_ids"]) == 20
+    # Because prompt alone was 50 tokens and max_length was 20, response was completely truncated
+    assert features["has_trainable_tokens"] is False
+    assert features["trainable_token_count"] == 0
+
+    # Normal sequence within budget preserves trainable response tokens
+    features_ok = tokenize_with_prompt_masking(
+        "A " * 5, "B " * 5, tokenizer, max_length=20
+    )
+    assert features_ok["has_trainable_tokens"] is True
+    assert features_ok["trainable_token_count"] == 5
 
 
 def test_precision_detection_tesla_t4_always_fp16():
