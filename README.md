@@ -402,17 +402,19 @@ model, tokenizer, meta = load_quantized_model_with_adapter(
 - [x] **Phase 1 Audit & Remediation** — Independent re-audit, `scripts/inspect_env.py`, memory footprint modeling, updated documentation.
 - [x] **Phase 2: SLM Research & Model Selection** — Comparative research on Qwen2.5-1.5B, SmolLM2-1.7B, and Llama-3.2-1B against local CPU & Colab GPU profiles.
 - [x] **Phase 3: Dataset Preparation & Validation** — 382 QA pairs across 18 beginner topics, 100% AST-valid code blocks, safe execution validation (200/200 passed), leakage-free 80:10:10 split.
-- [x] **Phase 4: Baseline Model Implementation & Evaluation** — Pretrained `Qwen2.5-1.5B-Instruct` benchmark across 38 held-out test cases, ChatML formatting, latency/throughput profiling, `experiments/baseline_results.json`, and `reports/baseline_report.md`.
+- [x] **Phase 4: Baseline Model Architecture & Reference Pipeline** — Pretrained `Qwen2.5-1.5B-Instruct` ChatML formatting and evaluation pipeline configured across 38 held-out test cases (`REFERENCE_UNVERIFIED` — actual baseline execution logs not established; 38 records serve as unverified reference profile).
 - [x] **Phase 5: LoRA Fine-Tuning Pipeline & Architecture** — Validated `SLMLoRAConfig` (r=8, α=16), loss-masked SFT pipeline (`train_lora.py`), Colab GPU notebook (`phase5_lora_training.ipynb`), exact LoRA parameter derivation (9,232,384 params / 0.5981%), and Phase 5 corrections audit report (`reports/phase5_corrections.md`).
 - [x] **Phase 6: Model Optimization & Controlled Benchmarking** — 4-bit NF4 quantization (`src/optimization/quantize.py`), adapter preservation, AST code validator, generation parameter optimization, 34 automated unit tests, and optimization report (`reports/phase6_optimization_report.md`).
 - [x] **Phase 7: Post-Adaptation Benchmark & Comprehensive Evaluation** — 9-point qualitative rubric (`src/evaluation/evaluate.py`), AST syntax verification, host code quarantine directives, base model parameter count verification (1,543,714,304), 45 automated unit tests (100% pass), and evaluation report (`reports/phase7_evaluation_report.md`).
 - [x] **Phase 8: FastAPI Backend & Streamlit Frontend (Local Development Runtime)**:
-  - Source Code: `COMPLETED_AND_VERIFIED` (FastAPI REST backend, Streamlit 4-tab UI, AST parser)
-  - Automated Pytest Suite: `COMPLETED_AND_VERIFIED` (64/64 tests passed in 3.34s)
-  - Live Local HTTP & UI Runtime: `COMPLETED_AND_VERIFIED` (11 live HTTP tests on uvicorn, 5 Streamlit AppTest flows)
-  - Mock-Based Tests: `UNIT_TESTED_WITH_MOCKS` (`test_assistant_service_mocked_model_loaded_inference`)
-  - Local SLM Weight Residency: `NOT_IMPLEMENTED` (SLM kept in standby to safeguard 7.75 GB host RAM)
-  - Real LoRA Adapter Training: `PENDING_COLAB_EXECUTION` (`adapter_model.safetensors` pending Google Colab GPU run)
+  - Application Source Implementation: `COMPLETED_AND_VERIFIED` (FastAPI REST backend, Streamlit 4-tab UI, AST parser)
+  - Local FastAPI and Streamlit Runtime: `COMPLETED_AND_VERIFIED` (11 live HTTP tests on uvicorn, 5 Streamlit AppTest flows)
+  - Automated Tests: `COMPLETED_AND_VERIFIED` (64/64 tests passed in latest pytest run)
+  - Base SLM Benchmark: `REFERENCE_UNVERIFIED` (actual baseline execution not established)
+  - LoRA Training: `PENDING_COLAB_EXECUTION` (notebook prepared, awaiting GPU execution)
+  - Adapter Weights on Disk: `PENDING_COLAB_EXECUTION` (pending until actual files are generated and checked)
+  - Fine-Tuned SLM Inference: `PENDING_COLAB_EXECUTION`
+  - Final End-to-End Demo with SLM: `PENDING_COLAB_EXECUTION`
   - Public Cloud Deployment: `NOT_IMPLEMENTED` (local development verification only; not public deployment)
 
 ---

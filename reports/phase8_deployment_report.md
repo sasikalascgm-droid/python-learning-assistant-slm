@@ -21,15 +21,18 @@ In strict adherence to engineering integrity, the following distinct project dim
 | Project Dimension | Status Label | Empirical Evidence & Current Reality |
 |---|---|---|
 | **1. Source Code Implementation** | `COMPLETED_AND_VERIFIED` | FastAPI backend, Streamlit frontend, service orchestrator, static AST parser, Pydantic schemas, LoRA training pipeline, and Colab notebook fully implemented. |
-| **2. Automated Test Suite** | `COMPLETED_AND_VERIFIED` | 64 / 64 tests passing in 3.34s across 7 test modules. |
-| **3. Local Application Runtime** | `COMPLETED_AND_VERIFIED` | FastAPI live HTTP server verified on port 8008/8009 (11 real HTTP requests); Streamlit live web server verified on port 8509 (AppTest component flows). |
-| **4. Unit Tests with Mocks** | `UNIT_TESTED_WITH_MOCKS` | `test_assistant_service_mocked_model_loaded_inference` uses `MagicMock` to verify SLM dispatch when weights are loaded. |
-| **5. Actual SLM Loaded Locally** | `NOT_IMPLEMENTED` | SLM weights are NOT loaded into laptop RAM to prevent OOM freeze on 7.75 GB system (`model_loaded: false`, Standby Mode). |
+| **2. Automated Test Suite** | `COMPLETED_AND_VERIFIED` | 64 / 64 unique tests passing in 3.44s across 7 test modules. |
+| **3. Local Application Runtime** | `COMPLETED_AND_VERIFIED` | FastAPI live HTTP server verified on audit port 8008/8009 (11 real HTTP requests); Streamlit live web server verified on audit port 8509 (AppTest component flows). |
+| **4. Unit Tests with Mocks** | `UNIT_TESTED_WITH_MOCKS` | `test_assistant_service_mocked_model_loaded_inference` (1 test overlapping within the 7 assistant service tests) uses `MagicMock` to verify SLM dispatch when weights are loaded. |
+| **5. Base SLM Benchmark** | `REFERENCE_UNVERIFIED` | Actual baseline execution not established; experiments/baseline_results.json is flagged reference_baseline_unverified and notebooks/baseline_evaluation.ipynb has 0 executed code cells. |
 | **6. Base Model Weights Cached** | `NOT_IMPLEMENTED` | Hugging Face cache on local machine contains 0 model files (`Cache file count: 0`). Large download bypassed locally. |
-| **7. Actual LoRA Training Completed** | `PENDING_COLAB_EXECUTION` | `artifacts/lora_adapter/adapter_model.safetensors` does NOT exist on disk. Training script and Colab notebook are prepared for Google Colab GPU. |
-| **8. Actual SLM Inference Verified** | `COMPLETED_AND_VERIFIED` *(Colab Baseline)*<br>`PENDING_COLAB_EXECUTION` *(LoRA)* | Pre-trained baseline verified on Colab GPU across 38 held-out tests. Fine-tuned inference awaits Colab training execution. |
-| **9. Public Cloud Deployment** | `NOT_IMPLEMENTED` | Application is verified locally on `127.0.0.1:8000` and `127.0.0.1:8501`. No public cloud hosting has been provisioned. |
-| **10. End-to-End Project Completion** | `PARTIALLY_COMPLETED` | Local software engineering, API architecture, web UI, static AST analysis, and test suites are 100% complete; Colab GPU fine-tuning remains pending. |
+| **7. Actual SLM Loaded Locally** | `NOT_IMPLEMENTED` | SLM weights are NOT loaded into laptop RAM to prevent OOM freeze on 7.75 GB system (`model_loaded: false`, Standby Mode). |
+| **8. Actual LoRA Training Completed** | `PENDING_COLAB_EXECUTION` | `artifacts/lora_adapter/adapter_model.safetensors` does NOT exist on disk. Training script and Colab notebook are prepared for Google Colab GPU. |
+| **9. Adapter Weights on Disk** | `PENDING_COLAB_EXECUTION` | Pending until actual files are generated in Colab and downloaded. |
+| **10. Fine-Tuned SLM Inference** | `PENDING_COLAB_EXECUTION` | Awaits trained adapter weights. |
+| **11. Final End-to-End Demo with SLM** | `PENDING_COLAB_EXECUTION` | Awaits trained adapter weights. |
+| **12. Public Cloud Deployment** | `NOT_IMPLEMENTED` | Application is verified locally on `127.0.0.1:8000` and `127.0.0.1:8501`. No public cloud hosting has been provisioned. |
+| **13. Whole Project Completion** | `PARTIALLY_COMPLETED` | Local software engineering, API architecture, web UI, static AST analysis, and test suites are 100% complete; Colab GPU fine-tuning and weights remain pending. |
 
 ---
 

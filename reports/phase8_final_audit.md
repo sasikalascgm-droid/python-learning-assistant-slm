@@ -20,8 +20,9 @@ This audit independently inspects, tests, and verifies the actual state of the P
 1. **Dependencies Satisfied:** All 12 packages declared in `requirements.txt` are installed and verified in Python 3.10.11. Missing runtime packages (`psutil`, `tqdm`, `python-dotenv`, `pytest-asyncio`) were installed and audited.
 2. **Actual Live FastAPI Server Verified:** Real `uvicorn` server was booted and tested over HTTP loopback. All 11 endpoint scenarios (GET `/`, GET `/health`, POST `/ask`, POST `/explain-code`, POST `/practice`, and 5 input-validation failure edge cases) returned correct status codes and responses.
 3. **Actual Live Streamlit Web UI Verified:** Real `streamlit` server was booted on port 8509 and verified over HTTP (GET `/_stcore/health` returned 200, GET `/` returned 200). Interactive AppTest flows validated tab navigation, execution badge rendering, and zero runtime exceptions.
-4. **Pytest Test Suite:** 64 / 64 automated tests collected and passed in 3.34 seconds.
-5. **Model and Adapter Status:**
+4. **Pytest Test Suite:** 64 / 64 unique automated tests collected and passed in 3.44 seconds (confirmed by latest pytest output).
+5. **Phase 4 Baseline Status:** **`REFERENCE_UNVERIFIED — actual baseline execution not established`**. Inspection of `notebooks/baseline_evaluation.ipynb` confirmed 0 code cells with outputs, and `experiments/baseline_results.json` explicitly carries `verification_status: "reference_baseline_unverified"`. No raw Colab runtime execution logs exist on disk.
+6. **Model and Adapter Status:**
    - Base model weights in local cache: **0 files present** (large download bypassed locally to protect 7.48 GB Drive C: free space).
    - Fine-tuned LoRA weights (`artifacts/lora_adapter/adapter_model.safetensors`): **Does NOT exist on disk** (`PENDING_COLAB_EXECUTION`).
    - Active execution mode: **`development_fallback`** (model kept in standby to prevent laptop freeze on 7.75 GB RAM).
@@ -36,11 +37,11 @@ All packages from `requirements.txt` were audited against `C:\Users\acer\AppData
 |---|---|---|---|---|
 | `pyyaml` | `>=6.0.1` | `6.0.3` | `COMPLETED_AND_VERIFIED` | YAML config loading |
 | `pytest` | `>=8.0.0` | `9.2.0` | `COMPLETED_AND_VERIFIED` | Test runner |
-| `pytest-asyncio` | `>=0.23.0` | `1.4.1.post1` | `COMPLETED_AND_VERIFIED` | Async test fixtures |
-| `python-dotenv` | `>=1.0.1` | `1.2.4` | `COMPLETED_AND_VERIFIED` | Environment variables |
-| `psutil` | `>=5.9.8` | `7.2.2` | `COMPLETED_AND_VERIFIED` | System memory querying |
+| `pytest-asyncio` | `>=0.23.0` | `1.4.1.post1` | `COMPLETED_AND_VERIFIED` | Async test fixtures (installed during audit) |
+| `python-dotenv` | `>=1.0.1` | `1.2.4` | `COMPLETED_AND_VERIFIED` | Environment variables (installed during audit) |
+| `psutil` | `>=5.9.8` | `7.2.2` | `COMPLETED_AND_VERIFIED` | System memory querying (installed during audit) |
 | `requests` | `>=2.31.0` | `2.34.2` | `COMPLETED_AND_VERIFIED` | HTTP client (UI communication) |
-| `tqdm` | `>=4.66.0` | `4.70.1` | `COMPLETED_AND_VERIFIED` | Progress bars |
+| `tqdm` | `>=4.66.0` | `4.70.1` | `COMPLETED_AND_VERIFIED` | Progress bars (installed during audit) |
 | `fastapi` | `>=0.110.0` | `0.162.0` | `COMPLETED_AND_VERIFIED` | REST API framework |
 | `uvicorn` | `[standard]>=0.29.0` | `0.54.0` | `COMPLETED_AND_VERIFIED` | ASGI web server |
 | `pydantic` | `>=2.6.0` | `2.14.3` | `COMPLETED_AND_VERIFIED` | Data validation & schemas |
@@ -51,8 +52,20 @@ All packages from `requirements.txt` were audited against `C:\Users\acer\AppData
 
 ---
 
-## 3. Actual FastAPI Application Live Server Runtime Verification
+## 3. Server Ports & Live FastAPI Verification
 
+### Server Port Specifications:
+- **Default Application Development Ports:**
+  - FastAPI Backend Default: **Port 8000** (`src/api/main.py`: `uvicorn.run(..., port=8000)`)
+  - Streamlit Frontend Default: **Port 8501** (Framework default; connects to `http://127.0.0.1:8000`)
+- **Historical Audit Verification Ports (Isolated Test Execution):**
+  - Standalone FastAPI Audit (`scripts/verify_server.py`): **Port 8008**
+  - UI Integration FastAPI Backend (`scripts/verify_ui.py`): **Port 8009**
+  - UI Integration Streamlit Frontend (`scripts/verify_ui.py`): **Port 8509**
+
+*Note: The audit verification scripts deliberately used ports 8008 and 8009/8509 to avoid colliding with any running developer servers on standard ports 8000 and 8501.*
+
+### Live FastAPI Verification Results:
 A dedicated verification script (`scripts/verify_server.py`) started the actual `uvicorn` server process on `127.0.0.1:8008` and executed live HTTP requests using Python's `urllib.request`. All requests were recorded in `reports/api_verification_results.json`:
 
 | Test # | Method | Path | Payload / Parameter | Expected Status | Actual Status | Latency | Verified Behavior |
@@ -69,8 +82,6 @@ A dedicated verification script (`scripts/verify_server.py`) started the actual 
 | 10 | `POST` | `/practice` | `diff: "expert_impossible"` | 422 | **422** | 0.0025s | Rejects unpermitted difficulty with HTTP 422. |
 | 11 | `POST` | `/practice` | `{"topic": "   "}` | 422 | **422** | 0.0024s | Rejects blank topic with HTTP 422. |
 
-*Audit Result:* The FastAPI application runs properly, handles real HTTP network traffic, and enforces strict validation and AST parsing without failure.
-
 ---
 
 ## 4. Actual Streamlit Web Application Live Runtime Verification
@@ -80,7 +91,7 @@ A dedicated verification script (`scripts/verify_ui.py`) started both the real F
 ### Live Network & Process Probe:
 - **FastAPI Process:** Started on port 8009; `GET /health` returned HTTP 200 OK.
 - **Streamlit Process:** Started on port 8509; `GET /_stcore/health` returned **HTTP 200 OK**.
-- **Streamlit Main Page:** `GET http://127.0.0.1:8509` returned **HTTP 200 OK** (HTML page served).
+- **Streamlit Main Page:** `GET http://127.0.0.1:8509` returned **HTTP 200 OK** (HTML interface served).
 
 ### In-Memory AppTest UI Flow Verification:
 Using `streamlit.testing.v1.AppTest`:
@@ -98,48 +109,36 @@ Using `streamlit.testing.v1.AppTest`:
    - `💡 Development Fallback Mode (SLM Unloaded / Standby)`
 5. **Process Termination:** Both server processes shut down cleanly without leaving orphaned background tasks.
 
-*Audit Result:* Streamlit web interface is verified on actual HTTP network ports and UI component flows.
-
 ---
 
-## 5. Comprehensive Test Suite Verification
+## 5. Non-Overlapping Test Suite Categorization & Pytest Results
 
-Execution of `python -m pytest -v`:
-- **Collected:** 64 items
-- **Passed:** 64 items (100%)
-- **Failed:** 0 items
-- **Skipped:** 0 items
-- **Execution Time:** 3.34 seconds
+### Pytest Collection & Execution Output:
+- **Command:** `python -m pytest --collect-only -q` -> **64 tests collected in 1.35s**
+- **Command:** `python -m pytest -v` -> **64 passed in 3.44s** (0 failed, 0 skipped)
 
-### Rigorous Classification of Test Types:
+### Non-Overlapping Test Accounting:
+To prevent double-counting or treating overlapping tests as separate, the 64 unique tests are rigorously decomposed:
 
 ```
-Total Test Suite: 64 Tests
-├── Unit Tests (Pure Logic, AST, Configs, Schemas): 57 tests
-├── Mock-Based Tests (Simulated SLM In-Memory Dispatch): 1 test
-└── API Route Integration Tests (Handler Execution & Validation): 6 tests
-```
+Total Unique Pytest Tests: 64
+├── Pure Logic Unit Tests: 57 tests
+│   ├── test_dataset.py: 8 tests
+│   ├── test_evaluation.py: 11 tests
+│   ├── test_inference.py: 5 tests
+│   ├── test_lora_config.py: 12 tests
+│   ├── test_optimization.py: 9 tests
+│   ├── test_assistant_service.py (Unit part): 6 tests
+│   └── test_api.py (Schema/validation part): 6 tests
+├── Mock-Based Test (Inside test_assistant_service.py): 1 test
+│   └── test_assistant_service_mocked_model_loaded_inference (overlap: 1 of 7 in assistant service)
+└── API In-Process Route Tests (Inside test_api.py): 6 tests
+    └── Route execution tests for /, /health, /model/load, /ask, /explain-code, /practice (overlap: 6 of 12 in api)
 
-#### Detailed Breakdown:
-1. **Dataset Unit Tests (8 tests — `tests/test_dataset.py`):**
-   - Verified raw data loading, schema integrity, zero duplicates, exact split sizes (306 train, 38 val, 38 test), zero cross-split leakage, static AST syntax validation of all embedded Python code blocks, and split reproducibility.
-2. **Evaluation Unit Tests (11 tests — `tests/test_evaluation.py`):**
-   - Verified base model commit revision pinning (`c644d673f4439c36291a1827471fb3be52382e26`), exact base model parameter calculation (**1,543,714,304** parameters), exact LoRA parameter calculation (**9,232,384** parameters), 9-point rubric validation, AST code syntax checking, performance statistics math, test set isolation, adapter check, and result exporting.
-3. **Inference Unit Tests (5 tests — `tests/test_inference.py`):**
-   - Verified ChatML formatting, code input prompt formatting, config loading, memory headroom verification, and cache directory resolution.
-4. **LoRA Architecture Unit Tests (12 tests — `tests/test_lora_config.py`):**
-   - Verified LoRA config defaults, target module architecture matching, hyperparameter validation, dataset loading, ChatML response-only loss masking, overfitting detection, metric tracker export, exact tensor parameter math, per-module parameter breakdown, padding loss masking exclusion, test set leak assertion, and truncation detection.
-5. **Optimization Unit Tests (9 tests — `tests/test_optimization.py`):**
-   - Verified 4-bit NF4 quantization configs, generation configs, quantization support diagnostics, adapter loading error handling, AST validator syntax, code block extraction, container sandbox enforcement, aggregate throughput calculation, and benchmark summary compilation.
-6. **API Route Tests (6 tests — `tests/test_api.py`):**
-   - Verified OpenAPI schema generation, route registration, root endpoint metadata, health status & hardware metrics, memory protection error handling (HTTP 503), and live route execution for `/ask`, `/explain-code`, and `/practice`.
-7. **Assistant & Prompt Service Unit Tests (6 tests — `tests/test_assistant_service.py`):**
-   - Verified ChatML prompt generation for Q&A, code explanation, and practice; fallback knowledge base topic mappings; static AST analysis on functions, loops, assignments, and returns; and AST syntax error reporting.
-8. **Mock-Based Tests (1 test — `tests/test_assistant_service.py`):**
-   - `test_assistant_service_mocked_model_loaded_inference`: Uses `unittest.mock.MagicMock` to simulate `ModelService` in `is_loaded = True` state and verifies that `AssistantService` routes prompts to `model_service.generate()` and sets `mode = "slm_inference"`.
-9. **Live End-to-End Server Runtime Tests (Separate Verification):**
-   - `scripts/verify_server.py`: 11 real HTTP network requests against live `uvicorn`.
-   - `scripts/verify_ui.py`: Live Streamlit web server and AppTest flows.
+Separate Standalone Verification (NOT part of the 64 pytest items):
+├── scripts/verify_server.py: 11 real HTTP network requests against running uvicorn
+└── scripts/verify_ui.py: Real Streamlit server health probe and AppTest flows
+```
 
 ---
 
@@ -158,33 +157,54 @@ C:\Users\acer\OneDrive\Documents\fastapi\slm-python-learning-assistant/
 ```
 
 ### Verified Facts:
-1. **Base Model Weights in Local Cache:** `NOT_IMPLEMENTED`. The local HuggingFace cache directory `.cache/huggingface` contains 0 model files. Model weights were not downloaded to the laptop to prevent consuming the 7.48 GB free space on Drive C:.
-2. **LoRA Fine-Tuned Adapter Weights:** `PENDING_COLAB_EXECUTION`. The file `artifacts/lora_adapter/adapter_model.safetensors` does **NOT** exist. Fine-tuning was deliberately not run on the laptop host CPU due to limited physical RAM (7.75 GB total, < 1.0 GB available).
-3. **Adapter Configuration on Disk:** `artifacts/lora_adapter/training_config.json` exists. The standard PEFT `adapter_config.json` will be generated upon completion of training in Google Colab.
-4. **Local Hardware Safeguard Enforced:** `POST /model/load` requires $\ge 1.5$ GB free physical RAM before allocating model weights. Because the host laptop currently has ~0.49 GB free RAM, the model remains in **standby mode (`model_loaded: false`)**.
+1. **Phase 4 Baseline Model Benchmark:** **`REFERENCE_UNVERIFIED — actual baseline execution not established`**.
+   - `notebooks/baseline_evaluation.ipynb` contains 6 code cells, **all with 0 executed cell outputs**.
+   - `experiments/baseline_results.json` explicitly specifies `verification_status: "reference_baseline_unverified"`.
+   - No raw GPU runtime logs or captured benchmark traces exist on disk.
+2. **Base Model Weights in Local Cache:** `NOT_IMPLEMENTED`. The local HuggingFace cache directory `.cache/huggingface` contains 0 model files. Model weights were not downloaded to the laptop to prevent consuming the 7.48 GB free space on Drive C:.
+3. **LoRA Fine-Tuned Adapter Weights:** `PENDING_COLAB_EXECUTION`. The file `artifacts/lora_adapter/adapter_model.safetensors` does **NOT** exist. Fine-tuning was deliberately not run on the laptop host CPU due to limited physical RAM (7.75 GB total, < 1.0 GB available).
+4. **Adapter Configuration on Disk:** `artifacts/lora_adapter/training_config.json` exists. The standard PEFT `adapter_config.json` will be generated upon completion of training in Google Colab.
+5. **Local Host RAM Protection:** Host laptop has 7.75 GB RAM with ~0.49 GB available. `POST /model/load` enforces a $\ge 1.5$ GB available RAM requirement, preventing host memory exhaustion. The application operates in **`development_fallback`** mode.
 
 ---
 
-## 7. Honest Technical Classification Matrix
+## 7. Google Colab GPU & Precision Configuration Audit
 
-In accordance with strict empirical honesty, the project state is categorized across 7 distinct dimensions:
+`notebooks/phase5_lora_training.ipynb` was inspected and audited:
+- **Free Colab Only:** The notebook does NOT require Colab Pro, paid compute units, or paid third-party APIs.
+- **Hardware Detection & Precision Rules:**
+  - Cell 2 explicitly checks `torch.cuda.is_available()`. If no GPU is attached, it raises:
+    `SystemError: No CUDA GPU detected. LoRA fine-tuning cannot run on host CPU. Please select a GPU runtime in Colab. Status remains PENDING_COLAB_EXECUTION.`
+  - Precision selection: Automatically checks `torch.cuda.is_bf16_supported()`.
+    - Tesla T4 (Turing SM 7.5, standard free Colab GPU): Sets `fp16=True`, `bf16=False`, `torch_dtype=torch.float16`.
+    - Ampere / Hopper GPUs (e.g. A100, L4): Sets `bf16=True`, `fp16=False`, `torch_dtype=torch.bfloat16`.
+  - Zero assumptions that a T4 is permanently guaranteed; any CUDA GPU provided by Colab will automatically configure the correct precision.
+
+---
+
+## 8. Honest Technical Classification Matrix
+
+In accordance with strict empirical honesty, the project state is categorized across separate dimensions:
 
 | Dimension | Technical Status | Empirical Evidence |
 |---|---|---|
 | **1. Source Code Implementation** | `COMPLETED_AND_VERIFIED` | FastAPI backend, Streamlit frontend, service orchestrator, static AST parser, Pydantic schemas, LoRA training pipeline, and Colab notebook fully implemented. |
-| **2. Automated Test Suite** | `COMPLETED_AND_VERIFIED` | 64 / 64 tests passing in 3.34s across 7 test modules. |
+| **2. Automated Pytest Suite** | `COMPLETED_AND_VERIFIED` | 64 / 64 tests passing in 3.44s across 7 test modules. |
 | **3. Local Application Runtime** | `COMPLETED_AND_VERIFIED` | FastAPI live HTTP server verified on port 8008/8009 (11 real HTTP requests); Streamlit live web server verified on port 8509 (AppTest component flows). |
-| **4. Unit Tests with Mocks** | `UNIT_TESTED_WITH_MOCKS` | `test_assistant_service_mocked_model_loaded_inference` uses `MagicMock` to verify SLM dispatch when weights are loaded. |
-| **5. Actual SLM Loaded Locally** | `NOT_IMPLEMENTED` | SLM weights are NOT loaded into laptop RAM to prevent OOM freeze on 7.75 GB system (`model_loaded: false`, Standby Mode). |
+| **4. Unit Tests with Mocks** | `UNIT_TESTED_WITH_MOCKS` | `test_assistant_service_mocked_model_loaded_inference` (1 test out of 64) uses `MagicMock` to verify SLM dispatch when weights are loaded. |
+| **5. Base SLM Benchmark** | `REFERENCE_UNVERIFIED` | Actual baseline execution not established; 0 notebook cell outputs; `baseline_results.json` flagged `reference_baseline_unverified`. |
 | **6. Base Model Weights Cached** | `NOT_IMPLEMENTED` | Hugging Face cache on local machine contains 0 model files (`Cache file count: 0`). Large download bypassed locally. |
-| **7. Actual LoRA Training Completed** | `PENDING_COLAB_EXECUTION` | `artifacts/lora_adapter/adapter_model.safetensors` does NOT exist on disk. Training script and Colab notebook are prepared for Google Colab GPU. |
-| **8. Actual SLM Inference Verified** | `COMPLETED_AND_VERIFIED` *(Colab Baseline)*<br>`PENDING_COLAB_EXECUTION` *(LoRA)* | Pre-trained baseline verified on Colab GPU across 38 held-out tests. Fine-tuned inference awaits Colab training execution. |
-| **9. Public Cloud Deployment** | `NOT_IMPLEMENTED` | Application is verified locally on `127.0.0.1:8000` and `127.0.0.1:8501`. No public cloud hosting has been provisioned. |
-| **10. End-to-End Project Completion** | `PARTIALLY_COMPLETED` | Local software engineering, API architecture, web UI, static AST analysis, and test suites are 100% complete; Colab GPU fine-tuning remains pending. |
+| **7. Actual SLM Loaded Locally** | `NOT_IMPLEMENTED` | SLM weights are NOT loaded into laptop RAM to prevent OOM freeze on 7.75 GB system (`model_loaded: false`, Standby Mode). |
+| **8. Actual LoRA Training Completed** | `PENDING_COLAB_EXECUTION` | `artifacts/lora_adapter/adapter_model.safetensors` does NOT exist on disk. Training script and Colab notebook are prepared for Google Colab GPU. |
+| **9. Adapter Weights on Disk** | `PENDING_COLAB_EXECUTION` | Pending until actual files are generated in Colab and downloaded. |
+| **10. Fine-Tuned SLM Inference** | `PENDING_COLAB_EXECUTION` | Awaits trained adapter weights. |
+| **11. Final End-to-End Demo with SLM** | `PENDING_COLAB_EXECUTION` | Awaits trained adapter weights. |
+| **12. Public Cloud Deployment** | `NOT_IMPLEMENTED` | Application is verified locally on `127.0.0.1:8000` and `127.0.0.1:8501`. No public cloud hosting has been provisioned. |
+| **13. Whole Project Completion** | `PARTIALLY_COMPLETED` | Local software engineering, API architecture, web UI, static AST analysis, and test suites are 100% complete; Colab GPU fine-tuning and weights remain pending. |
 
 ---
 
-## 8. Remaining Issues & Technical Debt
+## 9. Remaining Issues & Technical Debt
 
 1. **Adapter Weights Await Colab Execution:** The physical binary file `adapter_model.safetensors` does not exist on disk. Fine-tuning must be executed on a GPU instance (e.g. Google Colab Tesla T4) using `notebooks/phase5_lora_training.ipynb`.
 2. **Drive D: Cache Configuration:** The code defaults to `D:\huggingface_cache` if Drive D: is available; however, on this system Drive D: cache directory has not been created yet. The code safely falls back to local `.cache/huggingface`.
@@ -192,18 +212,19 @@ In accordance with strict empirical honesty, the project state is categorized ac
 
 ---
 
-## 9. Exact Steps User Must Perform Next
+## 10. Exact Steps User Must Perform Next
 
 To complete the full machine learning loop and attach fine-tuned weights:
 
 ### Step 1: Execute LoRA Fine-Tuning in Google Colab
 1. Upload or open [`notebooks/phase5_lora_training.ipynb`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/notebooks/phase5_lora_training.ipynb) in [Google Colab](https://colab.research.google.com).
 2. Set Runtime Type to **T4 GPU** (Python 3, Free Tier).
-3. Run all 13 cells. The notebook will:
+3. Run all cells. The notebook will:
+   - Automatically detect T4 GPU and select **FP16** precision.
    - Download base model `Qwen/Qwen2.5-1.5B-Instruct` (pinned revision `c644d673f4439c36291a1827471fb3be52382e26`).
    - Load training dataset `data/processed/train.jsonl` (306 pairs) and `validation.jsonl` (38 pairs).
    - Apply PEFT LoRA ($r=8$, $\alpha=16$, 9,232,384 trainable parameters, response loss masking).
-   - Train for 3 epochs with AdamW and cosine scheduling.
+   - Train for 2–3 epochs with AdamW and cosine scheduling.
    - Save adapter files: `adapter_model.safetensors` and `adapter_config.json`.
 4. Download the resulting `adapter_model.safetensors` and `adapter_config.json` files.
 
@@ -231,18 +252,15 @@ Open in browser: `http://localhost:8501`
 
 ---
 
-## 10. Git Status and Commit ID
+## 11. Git Status and Commit ID
 
 - **Base Phase 8 Commit:** `b085c1892609ad200268f8657bbfe6f08d5175fb`
+- **Audit Commit:** `1862270`
 - **Branch:** `master`
 - **Modified Documentation:**
-  - `README.md` (Updated with accurate status labels and local runtime verification scope)
-  - `reports/phase8_deployment_report.md` (Renamed to local runtime report; added 10-point honest status matrix)
-- **New Audit & Verification Artifacts:**
+  - `README.md` (Updated with non-overlapping test counts, accurate ports, and `REFERENCE_UNVERIFIED` baseline status)
+  - `reports/phase8_deployment_report.md` (Updated with accurate status matrix and ports)
   - `reports/phase8_final_audit.md` (This master final audit document)
-  - `reports/api_verification_results.json` (Real HTTP status codes, latencies, and responses)
-  - `reports/ui_verification_results.json` (Real Streamlit server health and component flow results)
-  - `scripts/verify_server.py` (FastAPI live HTTP test runner)
-  - `scripts/verify_ui.py` (Streamlit live HTTP and AppTest runner)
+  - `notebooks/phase5_lora_training.ipynb` (Clarified GPU error messaging and precision instructions)
 
 *End of Phase 8 Final Audit. System is paused awaiting user review.*
