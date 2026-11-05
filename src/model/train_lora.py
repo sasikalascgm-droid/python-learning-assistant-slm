@@ -25,7 +25,8 @@ from src.model.lora_config import (
     get_default_lora_config,
     QWEN2_TARGET_MODULES,
     PINNED_QWEN_REVISION,
-    calculate_lora_parameters
+    calculate_lora_parameters,
+    detect_hardware_precision
 )
 from src.evaluation.training_metrics import TrainingMetricsTracker
 from src.model.load_model import load_config, resolve_cache_directory
@@ -195,6 +196,41 @@ def prepare_hf_dataset(
     return tokenized_data
 
 
+class QwenSFTDataset:
+    """
+    PyTorch Dataset implementing ChatML formatting with prompt loss masking (-100).
+    Ensures that loss is calculated exclusively on assistant response tokens.
+    """
+    def __init__(
+        self,
+        records: List[Dict[str, str]],
+        tokenizer: Any,
+        max_len: int = 512,
+        system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    ):
+        import torch
+        self.features = []
+        for r in records:
+            prompt_str, response_str = format_chatml_example(
+                instruction=r["instruction"],
+                output=r["output"],
+                input_text=r.get("input", ""),
+                system_prompt=system_prompt
+            )
+            item = tokenize_with_prompt_masking(prompt_str, response_str, tokenizer, max_length=max_len)
+            self.features.append({
+                "input_ids": torch.tensor(item["input_ids"], dtype=torch.long),
+                "attention_mask": torch.tensor(item["attention_mask"], dtype=torch.long),
+                "labels": torch.tensor(item["labels"], dtype=torch.long)
+            })
+
+    def __len__(self) -> int:
+        return len(self.features)
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        return self.features[idx]
+
+
 def run_lora_training(
     cfg: Optional[SLMLoRAConfig] = None,
     dry_run: bool = False
@@ -203,10 +239,18 @@ def run_lora_training(
     Executes or simulates the LoRA fine-tuning process.
     If dry_run=True, validates the pipeline, tokenization, masking, and configurations
     without loading large model weights.
+    If dry_run=False and CUDA is available, executes full SFT fine-tuning with PEFT LoRA
+    and packages the resulting artifacts.
     """
     if cfg is None:
         cfg = get_default_lora_config()
     cfg.validate()
+
+    # Hardware precision detection
+    use_fp16, use_bf16, prec_str = detect_hardware_precision()
+    if not dry_run and (use_fp16 or use_bf16):
+        cfg.fp16 = use_fp16
+        cfg.bf16 = use_bf16
 
     train_recs, val_recs, data_hashes = load_training_datasets(
         train_path=cfg.train_file,
@@ -232,6 +276,7 @@ def run_lora_training(
         "lora_parameters": cfg.to_dict(),
         "trainable_parameters_analysis": param_analysis,
         "dataset_provenance": data_hashes,
+        "precision": prec_str,
         "dry_run": dry_run
     }
 
@@ -245,25 +290,173 @@ def run_lora_training(
             "train_samples": len(train_recs),
             "val_samples": len(val_recs),
             "config": cfg.to_dict(),
+            "precision": prec_str,
             "output_dir": str(out_dir)
         }
 
     # Full execution mode (Requires GPU)
-    import torch
-    if not torch.cuda.is_available():
+    try:
+        import torch
+        cuda_ok = torch.cuda.is_available()
+    except Exception:
+        cuda_ok = False
+
+    if not cuda_ok:
         raise RuntimeError(
             "CUDA GPU not available. LoRA fine-tuning must be executed on a GPU instance "
-            "(e.g. Google Colab Tesla T4) to prevent host memory exhaustion."
+            "(e.g. Google Colab Tesla T4) to prevent host memory exhaustion. "
+            "Status remains PENDING_COLAB_EXECUTION."
         )
 
-    # Return structure for Colab runner
+    import math
+    import shutil
+    import time
+    from transformers import (
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        Trainer,
+        TrainingArguments,
+        DataCollatorForSeq2Seq
+    )
+    from peft import get_peft_model
+
+    gpu_name = torch.cuda.get_device_name(0)
+    print(f"CUDA GPU detected: {gpu_name}")
+    print(f"Selected Training Precision: {prec_str}")
+
+    train_dtype = torch.bfloat16 if cfg.bf16 else torch.float16
+
+    # Load tokenizer
+    print(f"Loading tokenizer: {cfg.model_id} (revision: {cfg.model_revision})...")
+    tokenizer = AutoTokenizer.from_pretrained(
+        cfg.model_id,
+        revision=cfg.model_revision,
+        trust_remote_code=False
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # Build SFT datasets with prompt loss masking
+    train_dataset = QwenSFTDataset(train_recs, tokenizer, max_len=cfg.max_seq_length)
+    val_dataset = QwenSFTDataset(val_recs, tokenizer, max_len=cfg.max_seq_length)
+
+    # Load base model
+    print(f"Loading base model: {cfg.model_id}...")
+    base_model = AutoModelForCausalLM.from_pretrained(
+        cfg.model_id,
+        revision=cfg.model_revision,
+        torch_dtype=train_dtype,
+        low_cpu_mem_usage=True
+    )
+    if cfg.gradient_checkpointing:
+        base_model.gradient_checkpointing_enable()
+
+    # Attach PEFT LoRA adapter
+    peft_config = cfg.get_peft_config()
+    lora_model = get_peft_model(base_model, peft_config)
+
+    actual_trainable = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
+    actual_total = sum(p.numel() for p in lora_model.parameters())
+    actual_pct = (actual_trainable / actual_total) * 100.0
+
+    print(f"LoRA Trainable Parameters: {actual_trainable:,} ({actual_pct:.4f}%)")
+    assert actual_trainable == 9232384, f"Parameter count mismatch: actual={actual_trainable} vs expected=9232384"
+
+    training_args = TrainingArguments(
+        output_dir=cfg.output_dir,
+        learning_rate=cfg.learning_rate,
+        num_train_epochs=cfg.num_train_epochs,
+        per_device_train_batch_size=cfg.per_device_train_batch_size,
+        per_device_eval_batch_size=cfg.per_device_eval_batch_size,
+        gradient_accumulation_steps=cfg.gradient_accumulation_steps,
+        warmup_ratio=cfg.warmup_ratio,
+        weight_decay=cfg.weight_decay,
+        fp16=cfg.fp16,
+        bf16=cfg.bf16,
+        logging_steps=10,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=1,
+        seed=cfg.seed,
+        report_to="none"
+    )
+
+    trainer = Trainer(
+        model=lora_model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        data_collator=DataCollatorForSeq2Seq(tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True)
+    )
+
+    print("Launching LoRA fine-tuning...")
+    torch.cuda.reset_peak_memory_stats()
+    t_start = time.time()
+    train_result = trainer.train()
+    duration_s = time.time() - t_start
+    peak_vram_mb = torch.cuda.max_memory_allocated() / (1024**2)
+
+    eval_metrics = trainer.evaluate()
+    val_loss = eval_metrics.get("eval_loss", 0.0)
+    train_loss = train_result.training_loss
+    val_ppl = math.exp(min(val_loss, 20.0))
+
+    print(f"Training completed in {duration_s:.2f}s ({duration_s/60:.2f}m)")
+    print(f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Perplexity: {val_ppl:.2f}")
+    print(f"Peak VRAM: {peak_vram_mb:.2f} MB")
+
+    # Save model and tokenizer artifacts
+    lora_model.save_pretrained(cfg.output_dir)
+    tokenizer.save_pretrained(cfg.output_dir)
+
+    # Save trainer log history
+    with open(out_dir / "trainer_log_history.json", "w", encoding="utf-8") as f:
+        json.dump(trainer.state.log_history, f, indent=2)
+
+    summary_data = {
+        "model_id": cfg.model_id,
+        "model_revision": cfg.model_revision,
+        "gpu_model": gpu_name,
+        "precision": prec_str,
+        "trainable_parameters": actual_trainable,
+        "total_parameters": actual_total,
+        "trainable_percentage": round(actual_pct, 4),
+        "train_loss": round(train_loss, 4),
+        "val_loss": round(val_loss, 4),
+        "val_perplexity": round(val_ppl, 2),
+        "duration_seconds": round(duration_s, 2),
+        "peak_vram_mb": round(peak_vram_mb, 2)
+    }
+    with open(out_dir / "training_summary.json", "w", encoding="utf-8") as f:
+        json.dump(summary_data, f, indent=2)
+
+    # Package into zip archive
+    zip_name = "lora_adapter"
+    zip_path = shutil.make_archive(zip_name, "zip", cfg.output_dir)
+    print(f"Packaged adapter into {zip_path}")
+
     return {
-        "status": "ready_for_colab",
-        "config": cfg.to_dict(),
-        "output_dir": str(out_dir)
+        "status": "training_completed",
+        "summary": summary_data,
+        "output_dir": cfg.output_dir,
+        "zip_archive": zip_path
     }
 
 
 if __name__ == "__main__":
-    result = run_lora_training(dry_run=True)
-    print(f"LoRA pipeline dry-run completed: {result['status']}")
+    import argparse
+    parser = argparse.ArgumentParser(description="LoRA Fine-Tuning Execution Pipeline for Qwen2.5-1.5B-Instruct.")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="Run dry-run validation without GPU.")
+    parser.add_argument("--full", action="store_true", default=False, help="Execute full training on GPU.")
+    args = parser.parse_args()
+
+    has_cuda = False
+    try:
+        import torch
+        has_cuda = torch.cuda.is_available()
+    except Exception:
+        has_cuda = False
+
+    is_dry_run = args.dry_run or (not args.full and not has_cuda)
+    result = run_lora_training(dry_run=is_dry_run)
+    print(f"LoRA pipeline completed: {result['status']}")

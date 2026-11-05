@@ -38,6 +38,24 @@ QWEN2_1_5B_DIMS: Dict[str, int] = {
 PINNED_QWEN_REVISION = "c644d673f4439c36291a1827471fb3be52382e26"
 
 
+def detect_hardware_precision() -> Tuple[bool, bool, str]:
+    """
+    Detects whether CUDA hardware natively supports BF16 or FP16.
+    Returns:
+        (use_fp16, use_bf16, precision_display_str)
+    """
+    try:
+        import torch
+        if torch.cuda.is_available():
+            if torch.cuda.is_bf16_supported():
+                return False, True, "bfloat16 (Ampere / Hopper GPU)"
+            return True, False, "float16 (Tesla T4 SM 7.5 GPU)"
+    except Exception:
+        pass
+    return False, False, "float32 (CPU Fallback)"
+
+
+
 def compute_qwen2_projection_shapes(dims: Optional[Dict[str, int]] = None) -> Dict[str, Tuple[int, int]]:
     """
     Computes exact (in_features, out_features) dimensions for all 7 linear projections
@@ -171,6 +189,14 @@ class SLMLoRAConfig:
     output_dir: str = "artifacts/lora_adapter"
     train_file: str = "data/processed/train.jsonl"
     val_file: str = "data/processed/validation.jsonl"
+
+    def auto_configure_precision(self) -> str:
+        """Automatically aligns fp16 and bf16 with available CUDA hardware."""
+        use_fp16, use_bf16, prec_str = detect_hardware_precision()
+        self.fp16 = use_fp16
+        self.bf16 = use_bf16
+        return prec_str
+
 
     def validate(self) -> None:
         """Validates configuration values against architectural and training constraints."""
