@@ -13,7 +13,7 @@ Following an independent, line-by-line audit of Phase 5 deliverables, multiple c
 | Category | Prior Phase 5 Status | Audited Finding | Corrective Action Implemented | Impacted Files |
 | :--- | :--- | :--- | :--- | :--- |
 | **LoRA Trainable Parameters** | Reported as "~4.5 million parameters (~0.29%)" | Heuristic underestimated parameter count by failing to account for SwiGLU MLP intermediate dimension (8960 vs 1536). Real architecture has **9,232,384** trainable parameters (**0.5981%**). | Derived exact projection equations; implemented `calculate_lora_parameters()`; added unit tests. | `src/model/lora_config.py`, `src/model/train_lora.py`, `tests/test_lora_config.py` |
-| **Base Model Revision Pinning** | `main` unpinned branch | Risk of upstream weight mutation or breaking changes. Pinned immutable commit hash required. | Pinned model to commit `c644d673f4439c36291a1827471fb3be52382e26` across all loaders and configs. | `configs/model_config.yaml`, `src/model/load_model.py`, `src/model/lora_config.py`, `notebooks/phase5_lora_training.ipynb` |
+| **Base Model Revision Pinning** | `main` unpinned branch | Risk of upstream weight mutation or breaking changes. Pinned immutable commit hash required. | Pinned model to commit `989aa7980e4cf806f80c7fef2b1adb7bc71aa306` across all loaders and configs. | `configs/model_config.yaml`, `src/model/load_model.py`, `src/model/lora_config.py`, `notebooks/phase5_lora_training.ipynb` |
 | **Config Hyperparameter Alignment** | `configs/model_config.yaml` had $r=16, \alpha=32$, 3 epochs, `bf16=true` | Inconsistent with validated `SLMLoRAConfig` ($r=8, \alpha=16$, 2 epochs, `fp16=true`). Turing T4 lacks hardware BF16. | Fully aligned YAML config with validated LoRA architecture and Tesla T4 precision constraints. | `configs/model_config.yaml` |
 | **Loss Masking & Padding** | Static masking without padding exclusion | Needed explicit padding label masking (`-100`) and attention mask zeroing (`0`) for robust batching. | Enhanced `tokenize_with_prompt_masking()` to support dynamic padding and explicit `-100` label masking. | `src/model/train_lora.py`, `tests/test_lora_config.py` |
 | **Licensing Attribution Scope** | Brief mention of Apache-2.0 | Ambiguity regarding whether project claimed copyright on base model weights. | Added explicit exclusion in `LICENSE` clarifying base model weights belong to Alibaba Cloud / Qwen Team under Apache 2.0. | `LICENSE` |
@@ -84,7 +84,7 @@ This calculation is now implemented dynamically in `calculate_lora_parameters()`
    - Host: Intel Core i3-N305, 7.75 GB RAM (~0.5–0.8 GB free), Intel UHD Graphics (no CUDA GPU).
    - Local training remains strictly prohibited to protect host system stability.
 2. **Pinned Base Model Revision:**
-   - Base model: `Qwen/Qwen2.5-1.5B-Instruct` pinned to commit `c644d673f4439c36291a1827471fb3be52382e26`.
+   - Base model: `Qwen/Qwen2.5-1.5B-Instruct` pinned to commit `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`.
 3. **Licensing Framework:**
    - Base Model Weights: **Apache-2.0 License** (Alibaba Cloud / Qwen Team).
    - Repository Source Code: **MIT License**.

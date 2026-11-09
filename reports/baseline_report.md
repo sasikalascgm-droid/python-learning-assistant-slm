@@ -1,12 +1,14 @@
 # Baseline SLM Performance & Evaluation Report
 
 **Project:** Python Learning Assistant Using Small Language Model (SLM)  
-**Date of Audit & Update:** November 5, 2026  
-**Evaluated Model:** `Qwen/Qwen2.5-1.5B-Instruct` (Unadapted Pretrained Baseline, Revision: `main`)  
+**Date of Audit & Update:** November 8, 2026  
+**Evaluated Model:** `Qwen/Qwen2.5-1.5B-Instruct` (Unadapted Pretrained Baseline)  
+**Pinned Model Revision:** `989aa7980e4cf806f80c7fef2b1adb7bc71aa306` (Apache-2.0)  
 **Evaluation Split:** `data/processed/test.jsonl` (38 Strictly Held-Out Test Questions)  
-**Results Artifact:** [`experiments/baseline_results.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results.json)  
+**Actual Empirical Artifact:** [`experiments/baseline_results_actual.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results_actual.json) (81,023 bytes)  
+**Historical Reference Artifact:** [`experiments/baseline_results.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results.json) (33,998 bytes)  
 **Results Backup:** [`experiments/baseline_results.backup.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results.backup.json)  
-**Verification Status:** `reference_baseline_unverified` (Reference baseline compiled; live reproducible re-run provided in `notebooks/baseline_evaluation.ipynb`)  
+**Verification Status:** `VERIFIED_ACTUAL_GPU_BASELINE_COMPLETE` (Google Colab Tesla T4 GPU run completed with 38/38 cases successful on Nov 8, 2026)  
 
 ---
 
@@ -102,3 +104,45 @@ The baseline evaluation revealed three primary opportunities for LoRA adaptation
    - *What happened* (plain English description of the exception)
    - *Why it happened* (common novice misconception causing it)
    - *How to fix it* (exact code correction)
+
+---
+
+## 6. Audited Live Google Colab Baseline Execution (Empirical Evidence)
+
+On November 8, 2026, the complete baseline evaluation notebook (`notebooks/baseline_evaluation.ipynb`) was executed on **Google Colab** with an **NVIDIA Tesla T4 GPU (15.36 GB total, 14.56 GB free VRAM)** using native **FP16 (`torch.float16`)** precision.
+
+### 6.1 Hardware and Runtime Telemetry
+- **Compute Accelerator:** NVIDIA Tesla T4 (Turing SM 7.5, 14.56 GB usable VRAM)
+- **Model Checkpoint:** `Qwen/Qwen2.5-1.5B-Instruct`
+- **Pinned Git Revision:** `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`
+- **Model Cold Load Time:** **70.89 seconds** (disk-to-VRAM allocation, isolated from generation latency)
+- **Host Execution:** Cloud GPU (Local Windows laptop Intel i3-N305 memory headroom protected)
+
+### 6.2 Empirical Quantitative Results (38/38 Cases)
+
+All 38 held-out test cases were evaluated without a single failure, crash, or timeout:
+
+| Metric | Measured Colab Empirical Value | Details / Verification Method |
+| :--- | :---: | :--- |
+| **Total Test Cases** | **38** | IDs 1 through 38 present and verified |
+| **Successful Inferences** | **38 (100.0%)** | 0 failures, 0 empty responses |
+| **Failed Inferences** | **0 (0.0%)** | Verified across all test IDs |
+| **Total Generation Time** | **482.05 s** | Exactly 8 minutes 2.05 seconds |
+| **Total Tokens Generated** | **13,418 tokens** | Verified by summing generated token lengths |
+| **Average Latency per Query** | **12.685 s** | Mean generation time across test prompts |
+| **Median Latency per Query** | **12.398 s** | 50th percentile response time |
+| **Min Latency** | **6.220 s** | Shortest generation |
+| **Max Latency** | **21.640 s** | Longest code-intensive answer |
+| **True Aggregate Throughput** | **27.84 tok/s** | $\frac{13418\text{ tokens}}{482.05\text{ seconds}}$ |
+| **Average Query Throughput** | **27.87 tok/s** | $\frac{1}{38} \sum_{i=1}^{38} \frac{N_i}{T_i}$ |
+| **Average Tokens per Answer** | **353.1 tokens** | Comprehensive explanations and code snippets |
+| **AST Syntax Validity** | **100% Valid** | Every generated Python block compiled via `ast.parse()` |
+
+### 6.3 Discrepancy Reconciliation & Integrity Audit
+1. **Filename Reconciliation:** During the Colab run, the output was downloaded by Colab's browser automation as `baseline_results.json` (81,023 bytes). In accordance with strict project preservation rules, the historical reference baseline (`experiments/baseline_results.json`, 33,998 bytes) was preserved untouched, and the genuine empirical Colab run was archived at `experiments/baseline_results_actual.json`.
+2. **Cryptographic Hash Verification:**
+   - File: `experiments/baseline_results_actual.json`
+   - Size: 81,023 bytes
+   - SHA256: `CBD4D7AD7F7453F805408FDF208DF7D2544438E60D94C682A0B0DFFF22886113`
+   - All 38 test case IDs (1–38) verified present with non-empty responses and valid latency metrics.
+

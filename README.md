@@ -458,6 +458,24 @@ def validate_code_syntax(code: str) -> dict:
 - **Generation Throughput:** Output tokens generated per second.
 - **Peak VRAM Utilization:** Maximum GPU memory allocated during batch evaluation.
 
+### Audited Empirical Baseline Benchmark (Google Colab Tesla T4 GPU)
+
+The unadapted base model (`Qwen/Qwen2.5-1.5B-Instruct`, pinned revision `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`) was empirically benchmarked on Google Colab across all 38 held-out test cases (`data/processed/test.jsonl`). The run completed with a 100% success rate:
+
+| Metric | Measured Empirical Value | Details & Calculation |
+| :--- | :---: | :--- |
+| **Evaluated Test Cases** | **38 / 38 (100%)** | Zero timeouts, crashes, or unhandled exceptions |
+| **Model Cold Load Time** | **70.89 s** | Cold disk-to-VRAM weight transfer time into 14.56 GB GPU VRAM |
+| **Total Generation Time** | **482.05 s** | $\sum_{i=1}^{38} T_i$ (~8.03 minutes across the entire test set) |
+| **Total Tokens Synthesized** | **13,418 tokens** | Detailed, structured pedagogical responses |
+| **Average Tokens per Answer** | **353.1 tokens** | Substantive answers with code examples and explanations |
+| **Average Latency per Query** | **12.685 s** | Arithmetic mean generation latency across 38 cases |
+| **Median Latency per Query** | **12.398 s** | 50th percentile latency (range: 6.22s to 21.64s) |
+| **True Aggregate Throughput** | **27.84 tok/s** | $\frac{\text{Total Tokens}}{\text{Total Time}} = \frac{13418}{482.05}$ |
+| **Average Throughput** | **27.87 tok/s** | $\frac{1}{38} \sum_{i=1}^{38} \frac{N_i}{T_i}$ per-response generation speed |
+| **Code Syntax Validity (AST)** | **100% Valid** | All generated Python code blocks passed static `ast.parse()` validation |
+| **Benchmark Artifact** | [`experiments/baseline_results_actual.json`](file:///c:/Users/acer/OneDrive/Documents/fastapi/slm-python-learning-assistant/experiments/baseline_results_actual.json) | 81,023 bytes (SHA256: `CBD4D7AD...`) |
+
 ---
 
 ## 11. 4-bit NF4 Quantization & Optimization
@@ -734,8 +752,8 @@ This repository is maintained with strict engineering honesty. The table below d
 | **FastAPI REST API Backend** | **COMPLETE** ✅ | 7 endpoints operational with Pydantic v2 schemas and memory pre-flight guards |
 | **Streamlit Interactive Frontend** | **COMPLETE** ✅ | 4 interactive tabs with AST syntax validation and live system telemetry |
 | **Automated Test Suite** | **COMPLETE** ✅ | **73 / 73 tests passing** across 7 test suites in ~4.7 seconds |
-| **Local Development Fallback Mode** | **COMPLETE** ✅ | Protects low-RAM host environments while enabling full end-to-end testing |
-| **Colab Baseline Evaluation Run** | **READY FOR RUN** ⏳ | Notebook `baseline_evaluation.ipynb` fully audited; awaits Colab GPU execution |
+| **Local Development Fallback Mode** | **COMPLETE** ✅ | Protects low-RAM host environments and supports API/UI testing without real SLM inference |
+| **Colab Baseline Evaluation Run** | **COMPLETE** ✅ | Executed on Tesla T4 GPU (FP16); 38/38 test cases evaluated (100% success); results verified in `experiments/baseline_results_actual.json` |
 | **Colab LoRA Fine-Tuning Run** | **READY FOR RUN** ⏳ | Notebook `phase5_lora_training.ipynb` audited; `trainer.train()` awaits Colab GPU execution |
 | **Saved LoRA Adapter Weights** | **PENDING RUN** ⏳ | Adapter safetensors will be produced and exported upon executing Colab training |
 
@@ -765,3 +783,4 @@ This repository is maintained with strict engineering honesty. The table below d
 - **Author:** Sasikala ([@sasikalascgm-droid](https://github.com/sasikalascgm-droid))
 - **License:** Distributed under the **Apache License 2.0**. See `LICENSE` for details.
 - **Acknowledgments:** Built using [Hugging Face Transformers](https://github.com/huggingface/transformers), [PEFT](https://github.com/huggingface/peft), [FastAPI](https://fastapi.tiangolo.com/), [Streamlit](https://streamlit.io/), and the [Qwen Team's](https://github.com/QwenLM/Qwen2.5) open-weights models.
+
